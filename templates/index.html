@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krushi - Smart Farming Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-seedling"></i>
+                <h1>Krushi</h1>
+                <span>Smart Farming Assistant</span>
+            </div>
+            <nav class="nav">
+                <a href="#home" class="nav-link active">Home</a>
+                <a href="#recommendations" class="nav-link">Crop Advisor</a>
+                <a href="#weather" class="nav-link">Weather</a>
+                <a href="#market" class="nav-link">Market</a>
+                <a href="#water" class="nav-link">Water Management</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="hero">
+                <div class="container">
+                    <div class="hero-content">
+                        <h2>Welcome to Krushi</h2>
+                        <p>Your AI-powered farming companion for smarter crop decisions, better yields, and sustainable agriculture.</p>
+                        <div class="hero-features">
+                            <div class="feature-card" data-section="recommendations">
+                                <i class="fas fa-brain"></i>
+                                <h3>AI Crop Recommendations</h3>
+                                <p>Get personalized crop suggestions based on your soil, climate, and resources</p>
+                                <button class="feature-btn">Get Started</button>
+                            </div>
+                            <div class="feature-card" data-section="weather">
+                                <i class="fas fa-cloud-sun"></i>
+                                <h3>Weather Insights</h3>
+                                <p>Real-time weather data and forecasts for better farming decisions</p>
+                                <button class="feature-btn">Check Weather</button>
+                            </div>
+                            <div class="feature-card" data-section="market">
+                                <i class="fas fa-chart-line"></i>
+                                <h3>Market Trends</h3>
+                                <p>Stay updated with crop prices and market predictions</p>
+                                <button class="feature-btn">View Markets</button>
+                            </div>
+                            <div class="feature-card" data-section="water">
+                                <i class="fas fa-tint"></i>
+                                <h3>Water Management</h3>
+                                <p>Optimize irrigation with smart water management advice</p>
+                                <button class="feature-btn">Get Advice</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Crop Recommendations Section -->
+        <section id="recommendations" class="section">
+            <div class="container">
+                <h2>Crop Recommendation System</h2>
+                <div class="recommendation-form">
+                    <div class="form-group">
+                        <label for="location">Your Location</label>
+                        <input type="text" id="location" placeholder="Enter your city/district">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="soil-type">Soil Type</label>
+                            <select id="soil-type">
+                                <option value="">Select soil type</option>
+                                <option value="clay">Clay Soil</option>
+                                <option value="loamy">Loamy Soil</option>
+                                <option value="sandy">Sandy Soil</option>
+                                <option value="black">Black Soil</option>
+                                <option value="red">Red Soil</option>
+                                <option value="laterite">Laterite Soil</option>
+                                <option value="alluvial">Alluvial Soil</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="water-availability">Water Availability</label>
+                            <select id="water-availability">
+                                <option value="">Select water availability</option>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="farm-size">Farm Size (acres)</label>
+                            <input type="number" id="farm-size" placeholder="Enter farm size" min="0.1" step="0.1">
+                        </div>
+                    </div>
+                    <button id="get-recommendations" class="btn-primary">Get Crop Recommendations</button>
+                </div>
+
+                <div id="recommendations-results" class="results-section" style="display: none;">
+                    <h3>Recommended Crops for You</h3>
+                    <div id="crop-cards" class="crop-cards"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Weather Section -->
+        <section id="weather" class="section">
+            <div class="container">
+                <h2>Weather Information</h2>
+                <div class="weather-input">
+                    <input type="text" id="weather-location" placeholder="Enter location for weather">
+                    <button id="get-weather" class="btn-primary">Get Weather</button>
+                </div>
+                <div id="weather-results" class="weather-display" style="display: none;">
+                    <div class="current-weather">
+                        <h3>Current Weather</h3>
+                        <div id="current-weather-data"></div>
+                    </div>
+                    <div class="weather-forecast">
+                        <h3>7-Day Forecast</h3>
+                        <div id="forecast-data"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Market Section -->
+        <section id="market" class="section">
+            <div class="container">
+                <h2>Market Trends & Prices</h2>
+                <div class="market-input">
+                    <select id="market-crop">
+                        <option value="">Select a crop</option>
+                        <optgroup label="Cereals">
+                            <option value="rice">Rice</option>
+                            <option value="wheat">Wheat</option>
+                            <option value="maize">Maize</option>
+                            <option value="barley">Barley</option>
+                            <option value="bajra">Bajra</option>
+                            <option value="jowar">Jowar</option>
+                            <option value="ragi">Ragi</option>
+                        </optgroup>
+                        <optgroup label="Cash Crops">
+                            <option value="cotton">Cotton</option>
+                            <option value="sugarcane">Sugarcane</option>
+                            <option value="jute">Jute</option>
+                            <option value="tobacco">Tobacco</option>
+                        </optgroup>
+                        <optgroup label="Pulses">
+                            <option value="soybean">Soybean</option>
+                            <option value="groundnut">Groundnut</option>
+                            <option value="chickpea">Chickpea</option>
+                            <option value="pigeon_pea">Pigeon Pea</option>
+                            <option value="black_gram">Black Gram</option>
+                            <option value="green_gram">Green Gram</option>
+                            <option value="lentil">Lentil</option>
+                        </optgroup>
+                        <optgroup label="Vegetables">
+                            <option value="tomato">Tomato</option>
+                            <option value="potato">Potato</option>
+                            <option value="onion">Onion</option>
+                            <option value="cabbage">Cabbage</option>
+                            <option value="cauliflower">Cauliflower</option>
+                            <option value="brinjal">Brinjal</option>
+                            <option value="okra">Okra</option>
+                            <option value="chili">Chili</option>
+                        </optgroup>
+                        <optgroup label="Spices">
+                            <option value="turmeric">Turmeric</option>
+                            <option value="ginger">Ginger</option>
+                            <option value="coriander">Coriander</option>
+                            <option value="cumin">Cumin</option>
+                            <option value="fenugreek">Fenugreek</option>
+                        </optgroup>
+                        <optgroup label="Fruits">
+                            <option value="mango">Mango</option>
+                            <option value="banana">Banana</option>
+                            <option value="grapes">Grapes</option>
+                            <option value="pomegranate">Pomegranate</option>
+                        </optgroup>
+                        <optgroup label="Oilseeds">
+                            <option value="sunflower">Sunflower</option>
+                            <option value="mustard">Mustard</option>
+                            <option value="sesame">Sesame</option>
+                            <option value="safflower">Safflower</option>
+                        </optgroup>
+                    </select>
+                    <button id="get-market-data" class="btn-primary">Get Market Data</button>
+                </div>
+                <div id="market-results" class="market-display" style="display: none;">
+                    <div class="price-info">
+                        <h3>Current Market Information</h3>
+                        <div id="price-data"></div>
+                    </div>
+                    <div class="price-predictions">
+                        <h3>Price Predictions</h3>
+                        <div id="prediction-data"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Water Management Section -->
+        <section id="water" class="section">
+            <div class="container">
+                <h2>Water Management Advisory</h2>
+                <div class="water-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="water-crop">Crop Type</label>
+                            <select id="water-crop">
+                                <option value="">Select crop</option>
+                                <optgroup label="Cereals">
+                                    <option value="rice">Rice</option>
+                                    <option value="wheat">Wheat</option>
+                                    <option value="maize">Maize</option>
+                                    <option value="barley">Barley</option>
+                                    <option value="bajra">Bajra</option>
+                                </optgroup>
+                                <optgroup label="Cash Crops">
+                                    <option value="cotton">Cotton</option>
+                                    <option value="sugarcane">Sugarcane</option>
+                                </optgroup>
+                                <optgroup label="Vegetables">
+                                    <option value="tomato">Tomato</option>
+                                    <option value="potato">Potato</option>
+                                    <option value="onion">Onion</option>
+                                    <option value="cabbage">Cabbage</option>
+                                    <option value="brinjal">Brinjal</option>
+                                </optgroup>
+                                <optgroup label="Pulses">
+                                    <option value="soybean">Soybean</option>
+                                    <option value="chickpea">Chickpea</option>
+                                    <option value="groundnut">Groundnut</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="water-soil">Soil Type</label>
+                            <select id="water-soil">
+                                <option value="">Select soil type</option>
+                                <option value="clay">Clay Soil</option>
+                                <option value="loamy">Loamy Soil</option>
+                                <option value="sandy">Sandy Soil</option>
+                                <option value="black">Black Soil</option>
+                                <option value="red">Red Soil</option>
+                                <option value="laterite">Laterite Soil</option>
+                                <option value="alluvial">Alluvial Soil</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="water-location">Location</label>
+                            <input type="text" id="water-location" placeholder="Enter location">
+                        </div>
+                    </div>
+                    <button id="get-water-advice" class="btn-primary">Get Water Management Advice</button>
+                </div>
+
+                <div id="water-results" class="water-display" style="display: none;">
+                    <div class="irrigation-schedule">
+                        <h3>Irrigation Schedule</h3>
+                        <div id="irrigation-data"></div>
+                    </div>
+                    <div class="water-tips">
+                        <h3>Water Conservation Tips</h3>
+                        <div id="conservation-tips"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Krushi - Smart Farming Assistant. Empowering farmers with AI technology.</p>
+        </div>
+    </footer>
+
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
