@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Krushi — Field-instrument crop advisory</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container">
+    <div class="logo"><span class="mark"></span> Krushi</div>
+    <div class="nav-links">
+      <a href="#recommend">Crop advisor</a>
+      <a href="#soil">Soil</a>
+      <a href="#yield">Yield</a>
+      <a href="#market">Market</a>
+      <a href="#fertilizer">Fertilizer</a>
+      <a href="#profit">Profit</a>
+      <a href="#disease">Disease</a>
+      <a href="#water">Irrigation</a>
+      <a href="#calendar">Calendar</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#map">Map</a>
+      <a href="#knowledge">Learn</a>
+    </div>
+    <div id="nav-auth">
+      <a href="#account" class="btn btn-ghost-dark btn-small" id="nav-account-link">Login / Register</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div>
+      <div class="eyebrow on-dark">Live field reading</div>
+      <h1>Know what to plant, before the sun's fully up.</h1>
+      <p class="lead">
+        Krushi reads your soil test values against live weather for your exact GPS location and a
+        model trained on 2,200 real field samples across 22 crops — the panel on the right is
+        pulling its numbers from that model right now, not from a script.
+      </p>
+      <div class="hero-ctas">
+        <a href="#recommend" class="btn btn-primary">Take a reading</a>
+        <a href="#about" class="btn btn-ghost-dark">See the data sources</a>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>Model readout</span><span class="dot"></span></div>
+      <div class="gauge-wrap">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="10"/>
+          <circle id="accuracy-arc" cx="60" cy="60" r="52" fill="none" stroke="url(#gaugeGrad)"
+                  stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"
+                  transform="rotate(-90 60 60)"/>
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#6FA96B"/>
+              <stop offset="100%" stop-color="#E2892C"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="gauge-figure">
+          <span class="n" id="stat-accuracy">—</span>
+          <span class="label">crop model test accuracy</span>
+        </div>
+      </div>
+      <div class="readout-row"><span class="k">Training samples</span><span class="v" id="stat-samples">—</span></div>
+      <div class="readout-row"><span class="k">Crops modeled</span><span class="v" id="stat-crops">—</span></div>
+      <div class="readout-row"><span class="k">Market model R²</span><span class="v" id="stat-market-r2">—</span></div>
+      <div class="readout-row"><span class="k">Weather source</span><span class="v">Open-Meteo, live</span></div>
+    </div>
+  </div>
+  <div class="tear"></div>
+</header>
+
+<section id="account" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Optional</div>
+      <h2>Your account</h2>
+      <p>Sign in to save your farm profile (location, farm size, soil type, preferred language) —
+        the crop advisor and other tools below work fine without an account too.</p>
+    </div>
+
+    <div class="form-grid" id="auth-forms-wrap">
+      <div class="card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login" type="button">Login</button>
+          <button class="auth-tab" data-tab="register" type="button">Register</button>
+          <button class="auth-tab" data-tab="forgot" type="button">Forgot password</button>
+        </div>
+
+        <form class="auth-form active" id="login-form">
+          <div class="field"><label for="login-email">Email</label><input type="text" id="login-email" required></div>
+          <div class="field"><label for="login-password">Password</label><input type="password" id="login-password" required></div>
+          <button class="btn btn-primary" type="submit">Login</button>
+          <div class="error-note" id="login-error"></div>
+        </form>
+
+        <form class="auth-form" id="register-form">
+          <div class="field-row">
+            <div class="field"><label for="reg-name">Name</label><input type="text" id="reg-name" required></div>
+            <div class="field"><label for="reg-email">Email</label><input type="text" id="reg-email" required></div>
+          </div>
+          <div class="field"><label for="reg-password">Password (min. 8 characters)</label><input type="password" id="reg-password" required></div>
+          <div class="field-row">
+            <div class="field"><label for="reg-location">Location</label><input type="text" id="reg-location" placeholder="e.g. Nidasoshi, Karnataka"></div>
+            <div class="field"><label for="reg-farm-size">Farm size (acres)</label><input type="number" id="reg-farm-size" step="0.1"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="reg-soil-type">Soil type</label><select id="reg-soil-type"></select></div>
+            <div class="field"><label for="reg-language">Preferred language</label><select id="reg-language"></select></div>
+          </div>
+          <button class="btn btn-primary" type="submit">Create account</button>
+          <div class="error-note" id="register-error"></div>
+        </form>
+
+        <form class="auth-form" id="forgot-form">
+          <div class="field"><label for="forgot-email">Email</label><input type="text" id="forgot-email" required></div>
+          <button class="btn btn-primary" type="submit">Send reset token</button>
+          <div class="loading-note show" id="forgot-note" style="display:none;"></div>
+        </form>
+
+        <form class="auth-form" id="reset-form">
+          <div class="field"><label for="reset-email">Email</label><input type="text" id="reset-email" required></div>
+          <div class="field"><label for="reset-token">Reset token</label><input type="text" id="reset-token" required></div>
+          <div class="field"><label for="reset-new-password">New password</label><input type="password" id="reset-new-password" required></div>
+          <button class="btn btn-primary" type="submit">Reset password</button>
+          <div class="error-note" id="reset-error"></div>
+        </form>
+      </div>
+
+      <div class="card how-card">
+        <h3 style="font-size:1.05rem;">About the forgot-password flow</h3>
+        <p class="hint">This dev setup has no email service configured, so "forgot password" returns
+          the reset token directly in the response instead of pretending to email it — you'll see it
+          appear below the form so you can paste it into the reset form. In production this step
+          would be replaced with a real mail provider.</p>
+      </div>
+    </div>
+
+    <div class="card" id="account-panel">
+      <h3 style="font-size:1.1rem;">Signed in as <span id="profile-name"></span> <span class="role-badge" id="profile-role"></span></h3>
+      <div class="profile-grid" style="margin-top:16px;">
+        <div class="field"><label>Location</label><input type="text" id="profile-location"></div>
+        <div class="field"><label>Farm size (acres)</label><input type="number" id="profile-farm-size" step="0.1"></div>
+        <div class="field"><label>Soil type</label><select id="profile-soil-type"></select></div>
+        <div class="field"><label>Preferred language</label><select id="profile-language"></select></div>
+      </div>
+      <button class="btn btn-ghost btn-small" id="save-profile-btn" type="button">Save profile</button>
+      <button class="btn btn-ghost btn-small" id="logout-btn" type="button">Logout</button>
+      <div id="admin-panel" style="display:none; margin-top:20px; padding-top:16px; border-top:1px dashed var(--line);">
+        <h4 style="font-family:var(--mono); font-size:.8rem; text-transform:uppercase; color:var(--clay);">Admin: registered farmers</h4>
+        <div id="admin-users"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="recommend">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Step 1</div>
+      <h2>Crop recommendation</h2>
+      <p>Enter your soil test values (N, P, K, pH). Climate values auto-fill from live weather for
+        your exact GPS location — allow location access for the most accurate reading, or type a
+        location and override manually.</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="card">
+        <div class="field">
+          <label for="location">Location</label>
+          <div class="location-row">
+            <input type="text" id="location" placeholder="e.g. Nidasoshi, Karnataka" value="">
+            <button class="btn btn-ghost btn-small" id="detect-btn" type="button">Use my GPS location</button>
+          </div>
+          <div class="location-status" id="location-status"></div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="state">State</label>
+            <select id="state"><option value="">Select state</option></select>
+          </div>
+          <div class="field">
+            <label for="district">District</label>
+            <select id="district"><option value="">Select district</option></select>
+          </div>
+          <div class="field">
+            <label for="soil-type">Soil type</label>
+            <select id="soil-type"><option value="">Select soil type</option></select>
+          </div>
+          <div class="field">
+            <label for="season">Season</label>
+            <select id="season"><option value="">Select season</option></select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="n">Nitrogen — N (kg/ha)</label>
+            <input type="number" id="n" value="50" min="0" max="150">
+          </div>
+          <div class="field">
+            <label for="p">Phosphorus — P (kg/ha)</label>
+            <input type="number" id="p" value="50" min="0" max="150">
+          </div>
+          <div class="field">
+            <label for="k">Potassium — K (kg/ha)</label>
+            <input type="number" id="k" value="50" min="0" max="210">
+          </div>
+          <div class="field">
+            <label for="ph">Soil pH</label>
+            <input type="number" id="ph" value="6.5" min="3" max="10" step="0.1">
+          </div>
+        </div>
+
+        <div class="divider-label">Climate (auto-filled from live weather)</div>
+        <div class="field-row">
+          <div class="field">
+            <label for="temperature">Temperature (°C)</label>
+            <input type="number" id="temperature" placeholder="auto" step="0.1">
+          </div>
+          <div class="field">
+            <label for="humidity">Humidity (%)</label>
+            <input type="number" id="humidity" placeholder="auto" step="0.1">
+          </div>
+          <div class="field">
+            <label for="rainfall">Rainfall (mm)</label>
+            <input type="number" id="rainfall" placeholder="auto" step="0.1">
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-small" id="fetch-weather-btn" type="button">Fetch live weather for this location</button>
+        <div class="weather-preview" id="weather-preview"></div>
+
+        <div style="margin-top:22px;">
+          <button class="btn btn-primary" id="recommend-btn" type="button">Get crop recommendations</button>
+        </div>
+        <div class="loading-note" id="recommend-loading">Running the model…</div>
+        <div class="error-note" id="recommend-error"></div>
+      </div>
+
+      <div class="card how-card">
+        <h3 style="font-size:1.05rem;">Where the numbers come from</h3>
+        <ol>
+          <li><b>Soil values (N/P/K/pH)</b> — you enter these from a soil test; no API can guess
+            what is in your specific field.</li>
+          <li><b>Location</b> — read from your device's actual GPS via the browser, then reverse
+            geocoded to a place name. Far more accurate than IP-based location, which in India can
+            be off by hundreds of km.</li>
+          <li><b>Climate values</b> — fetched live from Open-Meteo for your coordinates.</li>
+          <li><b>Crop model</b> — a RandomForest classifier trained on a published 2,200-row
+            dataset, evaluated on a held-out 20% test split.</li>
+        </ol>
+        <div class="source-tags">
+          <span class="source-tag">Browser GPS</span>
+          <span class="source-tag">open-meteo.com</span>
+          <span class="source-tag">scikit-learn RandomForest</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="results">
+      <div id="weather-alerts"></div>
+      <div class="weather-summary" id="weather-summary"></div>
+      <div class="forecast-strip" id="forecast-strip"></div>
+      <div class="section-head" style="margin-top:30px;">
+        <h3 style="font-size:1.2rem;">Recommended crop</h3>
+      </div>
+      <div id="hero-crop"></div>
+      <div class="section-head" style="margin-top:26px;">
+        <h3 style="font-size:1.1rem;">Other suggestions</h3>
+      </div>
+      <div class="crop-grid" id="crop-grid"></div>
+    </div>
+  </div>
+</section>
+
+<section id="soil">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Step 2</div>
+      <h2>Soil health analysis</h2>
+      <p>Enter your soil test values to get a health score, nutrient status, and fertilizer
+        guidance. This uses the classification bands from India's Soil Health Card scheme — a
+        transparent rule engine, not a black box.</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="card">
+        <div class="field-row">
+          <div class="field"><label for="sh-n">Nitrogen (kg/ha)</label><input type="number" id="sh-n" value="120"></div>
+          <div class="field"><label for="sh-p">Phosphorus (kg/ha)</label><input type="number" id="sh-p" value="18"></div>
+          <div class="field"><label for="sh-k">Potassium (kg/ha)</label><input type="number" id="sh-k" value="150"></div>
+          <div class="field"><label for="sh-ph">Soil pH</label><input type="number" id="sh-ph" value="6.5" step="0.1"></div>
+        </div>
+        <div class="field">
+          <label for="sh-oc">Organic Carbon (%) — optional</label>
+          <input type="number" id="sh-oc" step="0.01" placeholder="e.g. 0.6">
+        </div>
+        <button class="btn btn-primary" id="soil-health-btn" type="button">Analyze soil</button>
+        <div class="loading-note" id="soil-health-loading">Scoring…</div>
+        <div class="error-note" id="soil-health-error"></div>
+      </div>
+
+      <div class="card how-card">
+        <h3 style="font-size:1.05rem;">How this is scored</h3>
+        <p class="hint">Nitrogen, Phosphorus, Potassium and Organic Carbon are each classified
+          Low / Medium / High against published Soil Health Card bands. pH is checked against the
+          6.0-7.5 optimal range. These combine into a 0-100 score. Fertilizer amounts shown are
+          general guidance — confirm exact dosage with a local soil-testing lab.</p>
+      </div>
+    </div>
+
+    <div id="soil-health-results" style="display:none; margin-top:32px;">
+      <div class="score-wrap">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="var(--line)" stroke-width="9"/>
+          <circle id="soil-score-arc" cx="50" cy="50" r="42" fill="none" stroke="url(#gaugeGrad)"
+                  stroke-width="9" stroke-linecap="round" stroke-dasharray="263.9" stroke-dashoffset="263.9"
+                  transform="rotate(-90 50 50)"/>
+        </svg>
+        <div class="score-figure"><span class="n" id="soil-score-n">—</span><span class="label">soil health score</span></div>
+      </div>
+      <div class="nutrient-grid" id="nutrient-grid"></div>
+      <h4 style="font-size:1rem;">Fertilizer recommendation</h4>
+      <div id="fert-list"></div>
+      <h4 style="font-size:1rem;">Improvement suggestions</h4>
+      <ul class="tips-list" id="soil-suggestions"></ul>
+    </div>
+  </div>
+</section>
+
+<section id="yield">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Standalone tool</div>
+      <h2>Yield prediction</h2>
+      <p>Enter your area, crop, and location/season — get an expected total yield and the model's
+        real held-out fit, from the same yield model used in the crop advisor above.</p>
+    </div>
+
+    <div class="card" style="max-width:560px;">
+      <div class="field-row">
+        <div class="field"><label for="yp-crop">Crop</label><input type="text" id="yp-crop" value="rice"></div>
+        <div class="field"><label for="yp-area">Area (acres)</label><input type="number" id="yp-area" value="2" step="0.1"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="yp-state">State</label><select id="yp-state"></select></div>
+        <div class="field"><label for="yp-season">Season</label><select id="yp-season"></select></div>
+      </div>
+      <button class="btn btn-primary" id="yield-predict-btn" type="button">Predict yield</button>
+      <div class="loading-note" id="yield-loading">Running the model…</div>
+      <div class="error-note" id="yield-error"></div>
+    </div>
+
+    <div id="yield-results" style="display:none; max-width:560px;"></div>
+  </div>
+</section>
+
+<section id="market" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Step 3</div>
+      <h2>Market price</h2>
+      <p>Real per-market prices from government mandi records, an ML price prediction, and the
+        nearest real markets to your location — currently covers <b>potato, tomato and wheat</b>.</p>
+    </div>
+
+    <div class="card" style="max-width:520px;">
+      <div class="location-row">
+        <input type="text" id="market-crop" placeholder="e.g. wheat, potato, tomato" value="wheat">
+        <button class="btn btn-primary btn-small" id="market-search-btn" type="button">Check prices</button>
+      </div>
+      <div class="loading-note" id="market-loading">Looking up real market records…</div>
+      <div class="error-note" id="market-error"></div>
+    </div>
+
+    <div id="market-results" style="display:none; margin-top:28px;">
+      <h3 style="font-size:1.1rem;">Price prediction (ML)</h3>
+      <div class="card" id="market-prediction-card" style="max-width:520px;"></div>
+
+      <h3 style="font-size:1.1rem; margin-top:26px;">Current mandi prices (real records)</h3>
+      <table class="mandi-table" id="mandi-table"><tbody></tbody></table>
+
+      <h3 style="font-size:1.1rem; margin-top:26px;">Nearest real markets to you</h3>
+      <p class="hint" id="nearby-hint">Use your GPS location above to see distances.</p>
+      <table class="mandi-table" id="nearby-table"><tbody></tbody></table>
+    </div>
+  </div>
+</section>
+
+<section id="fertilizer">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Step 4</div>
+      <h2>Fertilizer recommendation</h2>
+      <p>Pick a crop and your area, and get a standard fertilizer plan — which fertilizer, how
+        much, roughly what it costs, and when to apply it. Based on published package-of-practices
+        N-P-K doses, not a guess.</p>
+    </div>
+
+    <div class="card" style="max-width:520px;">
+      <div class="field-row">
+        <div class="field"><label for="fert-crop">Crop</label><input type="text" id="fert-crop" placeholder="e.g. rice, wheat, cotton" value="rice"></div>
+        <div class="field"><label for="fert-area">Area (acres)</label><input type="number" id="fert-area" value="1" step="0.1" min="0.1"></div>
+      </div>
+      <button class="btn btn-primary" id="fertilizer-btn" type="button">Get fertilizer plan</button>
+      <div class="loading-note" id="fertilizer-loading">Building plan…</div>
+      <div class="error-note" id="fertilizer-error"></div>
+    </div>
+
+    <div id="fertilizer-results" style="display:none; margin-top:26px; max-width:600px;">
+      <div id="fert-plan-list"></div>
+      <div class="fert-total"><span>Total approx. cost</span><span id="fert-total-cost"></span></div>
+      <p class="hint" id="fert-reference-note" style="margin-top:10px;"></p>
+    </div>
+  </div>
+</section>
+
+<section id="profit" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Standalone tool</div>
+      <h2>Profit estimation</h2>
+      <p>Enter your expenses and area/crop — income is computed from real yield × real price where
+        both are available, or your own entered price otherwise. Net profit = income − expenses.</p>
+    </div>
+
+    <div class="card" style="max-width:640px;">
+      <div class="field-row">
+        <div class="field"><label for="profit-crop">Crop</label><input type="text" id="profit-crop" value="rice"></div>
+        <div class="field"><label for="profit-area">Area (acres)</label><input type="number" id="profit-area" value="2" step="0.1"></div>
+      </div>
+      <div class="field"><label for="profit-manual-price">Expected price (₹/quintal) — used if there's no real ML price for this crop</label>
+        <input type="number" id="profit-manual-price" placeholder="e.g. 2200"></div>
+
+      <div class="divider-label">Expenses (₹)</div>
+      <div class="expense-row">
+        <div class="field"><label for="exp-seeds">Seeds</label><input type="number" id="exp-seeds" value="0"></div>
+        <div class="field"><label for="exp-fertilizer">Fertilizer</label><input type="number" id="exp-fertilizer" value="0"></div>
+        <div class="field"><label for="exp-labour">Labour</label><input type="number" id="exp-labour" value="0"></div>
+        <div class="field"><label for="exp-water">Water</label><input type="number" id="exp-water" value="0"></div>
+        <div class="field"><label for="exp-pesticides">Pesticides</label><input type="number" id="exp-pesticides" value="0"></div>
+      </div>
+      <button class="btn btn-primary" id="profit-btn" type="button">Estimate profit</button>
+      <div class="loading-note" id="profit-loading">Calculating…</div>
+      <div class="error-note" id="profit-error"></div>
+    </div>
+
+    <div id="profit-results" style="display:none; max-width:640px;"></div>
+  </div>
+</section>
+
+<section id="disease" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Step 5</div>
+      <h2>Disease check</h2>
+      <p>Select the crop and the symptoms you see to match against common known diseases. This is a
+        <b>symptom-matching reference, not image AI</b> — no reliable free image-disease model exists
+        that I'd trust to ship here. The photo below is kept for your own record only.</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="card">
+        <div class="field"><label for="disease-crop">Crop</label><input type="text" id="disease-crop" value="rice" placeholder="e.g. rice, wheat, cotton, potato, maize"></div>
+        <button class="btn btn-ghost btn-small" id="load-symptoms-btn" type="button">Load symptoms for this crop</button>
+        <div class="symptom-list" id="symptom-list"></div>
+        <button class="btn btn-primary" id="disease-check-btn" type="button" style="margin-top:10px;">Check</button>
+        <div class="loading-note" id="disease-loading">Matching…</div>
+        <div class="error-note" id="disease-error"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:1rem;">Photo (optional, for your record)</h3>
+        <div class="photo-upload-area">
+          <input type="file" id="disease-photo-input" accept="image/*" capture="environment">
+          <p class="hint" style="margin-top:8px;">Upload or take a photo — not analyzed, just saved for you to reference.</p>
+          <img id="photo-preview" class="photo-preview" style="display:none;">
+        </div>
+      </div>
+    </div>
+
+    <div id="disease-results" style="display:none; margin-top:26px;"></div>
+  </div>
+</section>
+
+<section id="water" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Step 2</div>
+      <h2>Irrigation schedule</h2>
+      <p>A rule-based 7-day irrigation plan built from a real weather forecast for your location —
+        a transparent water-balance calculation, not a black box.</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="card">
+        <div class="field-row">
+          <div class="field">
+            <label for="water-crop">Crop</label>
+            <input type="text" id="water-crop" placeholder="e.g. rice, wheat, cotton" value="rice">
+          </div>
+          <div class="field">
+            <label for="water-soil">Soil type</label>
+            <input type="text" id="water-soil" placeholder="loamy / clay / sandy" value="loamy">
+          </div>
+        </div>
+        <div class="field">
+          <label for="water-location">Location</label>
+          <input type="text" id="water-location" placeholder="uses your GPS location if set above" value="">
+        </div>
+        <button class="btn btn-primary" id="water-btn" type="button">Build irrigation schedule</button>
+        <div class="loading-note" id="water-loading">Fetching forecast and building schedule…</div>
+        <div class="error-note" id="water-error"></div>
+      </div>
+
+      <div class="card" id="water-summary-card" style="display:none;">
+        <h3 style="font-size:1.05rem;" id="water-crop-title"></h3>
+        <p class="hint" id="water-meta"></p>
+        <ul class="tips-list" id="water-tips"></ul>
+      </div>
+    </div>
+
+    <div id="water-results" style="display:none;">
+      <div class="irrigation-headline" id="irrigation-headline"></div>
+      <table class="schedule-table">
+        <thead>
+          <tr><th>Day</th><th>Date</th><th>Irrigation</th><th>Amount (mm)</th><th>Why</th></tr>
+        </thead>
+        <tbody id="schedule-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="calendar">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Step 6</div>
+      <h2>Crop calendar</h2>
+      <p>Pick a crop and your sowing date to get sowing, fertilizer, irrigation, and expected
+        harvest dates — computed from published crop-duration and growth-stage references.</p>
+    </div>
+
+    <div class="card" style="max-width:520px;">
+      <div class="field-row">
+        <div class="field"><label for="cal-crop">Crop</label><input type="text" id="cal-crop" value="rice" placeholder="e.g. rice, wheat, cotton"></div>
+        <div class="field"><label for="cal-sowing-date">Sowing date</label><input type="date" id="cal-sowing-date"></div>
+      </div>
+      <button class="btn btn-primary" id="calendar-btn" type="button">Build calendar</button>
+      <div class="loading-note" id="calendar-loading">Building calendar…</div>
+      <div class="error-note" id="calendar-error"></div>
+    </div>
+
+    <div id="calendar-results" style="display:none; margin-top:26px; max-width:600px;">
+      <p class="hint" id="calendar-summary"></p>
+      <ul class="calendar-list" id="calendar-list"></ul>
+    </div>
+  </div>
+</section>
+
+<section id="dashboard">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Login required</div>
+      <h2>Farm dashboard</h2>
+      <p>Charts built from your own real data — soil health checks, water usage, and yield
+        predictions log automatically when you're signed in; add expenses/income below.</p>
+    </div>
+
+    <div id="dashboard-logged-out" class="card" style="max-width:520px;">
+      <p class="hint">Sign in above to see your dashboard — a new account starts empty, since there's
+        no real history to show yet.</p>
+    </div>
+
+    <div id="dashboard-content" style="display:none;">
+      <div class="card" style="max-width:640px; margin-bottom:24px;">
+        <h3 style="font-size:1rem;">Add a record</h3>
+        <div class="field-row">
+          <div class="field"><label for="rec-type">Type</label>
+            <select id="rec-type"><option value="expense">Expense</option><option value="income">Income</option></select>
+          </div>
+          <div class="field" id="rec-category-field"><label for="rec-category">Category</label>
+            <select id="rec-category"><option>seeds</option><option>fertilizer</option><option>labour</option><option>water</option><option>pesticides</option><option>other</option></select>
+          </div>
+          <div class="field"><label for="rec-amount">Amount (₹)</label><input type="number" id="rec-amount" value="0"></div>
+          <div class="field"><label for="rec-crop">Crop</label><input type="text" id="rec-crop" placeholder="optional"></div>
+        </div>
+        <button class="btn btn-ghost btn-small" id="add-record-btn" type="button">Add record</button>
+      </div>
+
+      <div id="dashboard-empty" class="empty-dash" style="display:none;">No records yet — add an expense/income above, or run a soil health check / irrigation schedule while signed in to start building your dashboard.</div>
+
+      <div id="dashboard-charts-wrap">
+        <div class="dash-summary-row" id="dash-summary"></div>
+        <div class="dash-charts">
+          <div class="chart-card"><h4>Expenses by category</h4><canvas id="chart-expenses"></canvas></div>
+          <div class="chart-card"><h4>Income vs. expenses</h4><canvas id="chart-income-expense"></canvas></div>
+          <div class="chart-card"><h4>Soil health score history</h4><canvas id="chart-soil"></canvas></div>
+          <div class="chart-card"><h4>Water usage per irrigation plan (mm)</h4><canvas id="chart-water"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="map" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Free, no API key</div>
+      <h2>Interactive farm map</h2>
+      <p>Uses Leaflet + OpenStreetMap (free, keyless) to show your real GPS location and the real
+        markets near you for a given crop. "Nearby weather stations" isn't shown — Open-Meteo is a
+        model-based forecast service, not a network of physical stations with public locations, so
+        showing fake station markers would be dishonest.</p>
+    </div>
+    <div class="location-row" style="max-width:520px;">
+      <input type="text" id="map-crop" placeholder="crop for nearby markets, e.g. wheat" value="wheat">
+      <button class="btn btn-ghost btn-small" id="map-refresh-btn" type="button">Show map</button>
+    </div>
+    <div id="farm-map"></div>
+  </div>
+</section>
+
+<section id="knowledge">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Reference</div>
+      <h2>Farming knowledge base</h2>
+      <p>General agronomy reference content and real government scheme links — no fabricated video
+        links (see the "About" section below for why).</p>
+    </div>
+    <div class="kb-tabs">
+      <button class="kb-tab active" data-kb="articles" type="button">Articles</button>
+      <button class="kb-tab" data-kb="best_practices" type="button">Best Practices</button>
+      <button class="kb-tab" data-kb="organic_farming" type="button">Organic Farming</button>
+      <button class="kb-tab" data-kb="pest_management" type="button">Pest Management</button>
+      <button class="kb-tab" data-kb="government_schemes" type="button">Govt Schemes</button>
+    </div>
+    <div id="kb-content"></div>
+  </div>
+</section>
+
+<section id="about">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Honesty about data</div>
+      <h2>What's real, and what's a labeled fallback</h2>
+      <p>Every module is tagged with where its numbers actually come from — nothing here pretends
+        to be live when it isn't.</p>
+    </div>
+    <div class="about-grid">
+      <div class="card">
+        <h3><span class="status-dot real"></span>Crop model — real</h3>
+        <p class="desc" style="min-height:0;">Trained on a published 2,200-sample dataset. Accuracy
+          is measured on a held-out test split, shown live in the panel above.</p>
+      </div>
+      <div class="card">
+        <h3><span class="status-dot real"></span>Weather & location — real</h3>
+        <p class="desc" style="min-height:0;">Live weather from Open-Meteo, and location from your
+          device's GPS via the browser — not IP-based guessing.</p>
+      </div>
+      <div class="card">
+        <h3><span class="status-dot partial"></span>Market prices — real, limited coverage</h3>
+        <p class="desc" style="min-height:0;">A regression model trained on real government mandi
+          data currently covers <b>potato, tomato and wheat</b>. Other crops show an explicit
+          "not covered" message rather than an invented number. Add a data.gov.in key for live
+          prices on more crops.</p>
+      </div>
+      <div class="card">
+        <h3><span class="status-dot real"></span>Fertilizer & calendar — real reference data</h3>
+        <p class="desc" style="min-height:0;">Published package-of-practices N-P-K doses and
+          crop-duration figures — transparent lookups and arithmetic, not ML.</p>
+      </div>
+      <div class="card">
+        <h3><span class="status-dot partial"></span>Disease check — reference, not image AI</h3>
+        <p class="desc" style="min-height:0;">Symptom-matching against known diseases, not photo
+          analysis. I looked for a real bundleable image model and found one, but its only dependency
+          path (fastai 1.x) doesn't install on modern Python — so it's not shipped rather than
+          shipped broken.</p>
+      </div>
+      <div class="card">
+        <h3><span class="status-dot real"></span>Dashboard, map, knowledge base — real, with limits</h3>
+        <p class="desc" style="min-height:0;">Dashboard charts are your own logged data — nothing
+          synthetic. The map uses free Leaflet/OpenStreetMap (no key) and shows real markets, but
+          skips "nearby weather stations" since that data doesn't exist for a model-based forecast
+          service. The knowledge base has no video links, since I can't verify a URL is real or
+          current without a search tool in this build.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div>
+      <div class="brand">Krushi</div>
+      <div class="disclaimer">An agricultural decision-support tool. Recommendations are
+        informational and should be combined with local agronomic advice, especially for
+        high-value or first-time crops.</div>
+    </div>
+    <div class="disclaimer">
+      Data sources: Open-Meteo (weather), browser GPS + reverse geocoding (location), a published
+      crop-recommendation dataset (crop model), real Agmarknet mandi records (market model).
+    </div>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
