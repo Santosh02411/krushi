@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+
+<header class="hero">
+  <div class="container" style="grid-template-columns: 1fr; text-align:center;">
+    <div>
+      <div class="eyebrow on-dark" style="justify-content:center;">Sign in required</div>
+      <h1 style="max-width:none;">Sign in to use Krushi</h1>
+      <p class="lead" style="margin-left:auto; margin-right:auto;">
+        Every tool here — crop advisor, soil health, market prices, irrigation, and the rest —
+        is tied to your farm profile, so it's behind sign-in. Registering takes a minute and
+        there's no cost.
+      </p>
+    </div>
+  </div>
+  <div class="tear"></div>
+</header>
+
+<section id="account">
+  <div class="container">
+    <div class="form-grid" id="auth-forms-wrap">
+      <div class="card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login" type="button">Login</button>
+          <button class="auth-tab" data-tab="register" type="button">Register</button>
+          <button class="auth-tab" data-tab="forgot" type="button">Forgot password</button>
+        </div>
+
+        <form class="auth-form active" id="login-form">
+          <div class="field"><label for="login-email">Email</label><input type="text" id="login-email" required></div>
+          <div class="field"><label for="login-password">Password</label><input type="password" id="login-password" required></div>
+          <button class="btn btn-primary" type="submit">Login</button>
+          <div class="error-note" id="login-error"></div>
+        </form>
+
+        <form class="auth-form" id="register-form">
+          <div class="field-row">
+            <div class="field"><label for="reg-name">Name</label><input type="text" id="reg-name" required></div>
+            <div class="field"><label for="reg-email">Email</label><input type="text" id="reg-email" required></div>
+          </div>
+          <div class="field"><label for="reg-password">Password (min. 8 characters)</label><input type="password" id="reg-password" required></div>
+          <div class="field-row">
+            <div class="field"><label for="reg-location">Location</label><input type="text" id="reg-location" placeholder="e.g. Nidasoshi, Karnataka"></div>
+            <div class="field"><label for="reg-farm-size">Farm size (acres)</label><input type="number" id="reg-farm-size" step="0.1"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label for="reg-soil-type">Soil type</label><select id="reg-soil-type"></select></div>
+            <div class="field"><label for="reg-language">Preferred language</label><select id="reg-language"></select></div>
+          </div>
+          <button class="btn btn-primary" type="submit">Create account</button>
+          <div class="error-note" id="register-error"></div>
+        </form>
+
+        <form class="auth-form" id="forgot-form">
+          <div class="field"><label for="forgot-email">Email</label><input type="text" id="forgot-email" required></div>
+          <button class="btn btn-primary" type="submit">Send reset token</button>
+          <div class="loading-note show" id="forgot-note" style="display:none;"></div>
+        </form>
+
+        <form class="auth-form" id="reset-form">
+          <div class="field"><label for="reset-email">Email</label><input type="text" id="reset-email" required></div>
+          <div class="field"><label for="reset-token">Reset token</label><input type="text" id="reset-token" required></div>
+          <div class="field"><label for="reset-new-password">New password</label><input type="password" id="reset-new-password" required></div>
+          <button class="btn btn-primary" type="submit">Reset password</button>
+          <div class="error-note" id="reset-error"></div>
+        </form>
+      </div>
+
+      <div class="card how-card">
+        <h3 style="font-size:1.05rem;">About the forgot-password flow</h3>
+        <p class="hint">This dev setup has no email service configured, so "forgot password" returns
+          the reset token directly in the response instead of pretending to email it — you'll see it
+          appear below the form so you can paste it into the reset form. In production this step
+          would be replaced with a real mail provider.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block page_script %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => { initCommon(); initLoginPage(); });
+</script>
+{% endblock %}
