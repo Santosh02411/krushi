@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Your profile{% endblock %}
+{% block content %}
+
+<section id="account">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Your farm profile</div>
+      <h2>Profile</h2>
+      <p>These defaults are used to pre-fill location and soil type across the app.</p>
+    </div>
+
+    <div class="card" id="account-panel" style="max-width:640px;">
+      <h3 style="font-size:1.1rem;">Signed in as <span id="profile-name"></span> <span class="role-badge" id="profile-role"></span></h3>
+      <div class="profile-grid" style="margin-top:16px;">
+        <div class="field"><label>Location</label><input type="text" id="profile-location"></div>
+        <div class="field"><label>Farm size (acres)</label><input type="number" id="profile-farm-size" step="0.1"></div>
+        <div class="field"><label>Soil type</label><select id="profile-soil-type"></select></div>
+        <div class="field"><label>Preferred language</label><select id="profile-language"></select></div>
+      </div>
+      <button class="btn btn-ghost btn-small" id="save-profile-btn" type="button">Save profile</button>
+      <button class="btn btn-ghost btn-small" id="logout-btn" type="button">Logout</button>
+    </div>
+
+    {% if user and user.role == 'admin' %}
+    <div class="card" id="admin-panel" style="max-width:640px; margin-top:24px;">
+      <h4 style="font-family:var(--mono); font-size:.8rem; text-transform:uppercase; color:var(--clay);">Admin: registered farmers</h4>
+      <div id="admin-users"></div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block page_script %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => { initCommon(); initProfilePage(); });
+</script>
+{% endblock %}

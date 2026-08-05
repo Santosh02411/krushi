@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Krushi — {% block title %}Field-instrument crop advisory{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="container">
+    <a href="{{ url_for('home_page' if session.get('user_id') else 'login_page') }}" class="logo"><span class="mark"></span> Krushi</a>
+    {% if session.get('user_id') %}
+    <div class="nav-links">
+      <a href="{{ url_for('recommend_page') }}" class="{{ 'active' if active=='recommend' }}">Crop advisor</a>
+      <a href="{{ url_for('soil_page') }}" class="{{ 'active' if active=='soil' }}">Soil</a>
+      <a href="{{ url_for('yield_page') }}" class="{{ 'active' if active=='yield' }}">Yield</a>
+      <a href="{{ url_for('market_page') }}" class="{{ 'active' if active=='market' }}">Market</a>
+      <a href="{{ url_for('fertilizer_page') }}" class="{{ 'active' if active=='fertilizer' }}">Fertilizer</a>
+      <a href="{{ url_for('profit_page') }}" class="{{ 'active' if active=='profit' }}">Profit</a>
+      <a href="{{ url_for('disease_page') }}" class="{{ 'active' if active=='disease' }}">Disease</a>
+      <a href="{{ url_for('water_page') }}" class="{{ 'active' if active=='water' }}">Irrigation</a>
+      <a href="{{ url_for('calendar_page') }}" class="{{ 'active' if active=='calendar' }}">Calendar</a>
+      <a href="{{ url_for('dashboard_page') }}" class="{{ 'active' if active=='dashboard' }}">Dashboard</a>
+      <a href="{{ url_for('records_page') }}" class="{{ 'active' if active=='records' }}">Records</a>
+      <a href="{{ url_for('analytics_page') }}" class="{{ 'active' if active=='analytics' }}">Analytics</a>
+      <a href="{{ url_for('map_page') }}" class="{{ 'active' if active=='map' }}">Map</a>
+      <a href="{{ url_for('knowledge_page') }}" class="{{ 'active' if active=='knowledge' }}">Learn</a>
+      <a href="{{ url_for('chat_page') }}" class="{{ 'active' if active=='chat' }}">Ask Krushi</a>
+      {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_page') }}" class="{{ 'active' if active=='admin' }}">Admin</a>{% endif %}
+    </div>
+    <div id="nav-auth" class="nav-user">
+      <span id="nav-notif-badge" class="nav-badge" style="display:none;"></span>
+      <a href="{{ url_for('profile_page') }}" class="btn btn-ghost-dark btn-small">{{ user.name if user else 'Profile' }}</a>
+      <button class="btn btn-ghost-dark btn-small" id="nav-logout-btn" type="button">Logout</button>
+    </div>
+    {% else %}
+    <div id="nav-auth">
+      <a href="{{ url_for('login_page') }}" class="btn btn-ghost-dark btn-small">Login / Register</a>
+    </div>
+    {% endif %}
+  </div>
+</nav>
+
+{% block content %}{% endblock %}
+
+<footer>
+  <div class="container">
+    <div>
+      <div class="brand">Krushi</div>
+      <div class="disclaimer">An agricultural decision-support tool. Recommendations are
+        informational and should be combined with local agronomic advice, especially for
+        high-value or first-time crops.</div>
+    </div>
+    <div class="disclaimer">
+      Data sources: Open-Meteo (weather), browser GPS + reverse geocoding (location), real
+      published agronomy datasets (crop/yield/market models), Anthropic API (chatbot, if configured).
+    </div>
+  </div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+{% block page_script %}{% endblock %}
+</body>
+</html>

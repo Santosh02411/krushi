@@ -101,9 +101,9 @@ GENERAL_SAFETY_NOTE = (
 )
 
 
-def list_symptoms_for_crop(crop):
+def list_symptoms_for_crop(crop, extra_diseases=None):
     crop_key = (crop or "").strip().lower()
-    diseases = DISEASE_REFERENCE.get(crop_key, [])
+    diseases = list(DISEASE_REFERENCE.get(crop_key, [])) + list(extra_diseases or [])
     symptom_set = []
     for d in diseases:
         for s in d["symptoms"]:
@@ -112,9 +112,9 @@ def list_symptoms_for_crop(crop):
     return {"covered": bool(diseases), "crop": crop_key, "symptoms": symptom_set}
 
 
-def match_disease(crop, selected_symptoms):
+def match_disease(crop, selected_symptoms, extra_diseases=None):
     crop_key = (crop or "").strip().lower()
-    diseases = DISEASE_REFERENCE.get(crop_key)
+    diseases = list(DISEASE_REFERENCE.get(crop_key, [])) + list(extra_diseases or [])
     if not diseases:
         return {
             "covered": False, "crop": crop,

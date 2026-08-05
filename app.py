@@ -5,19 +5,23 @@ import uuid
 from datetime import date, datetime
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 import auth
 import farm_records
+from admin_tools import (add_custom_disease, add_news, delete_custom_disease, delete_news,
+                          get_admin_stats, get_custom_diseases, get_news)
+from chat_service import ChatService
 from crop_calendar import get_crop_calendar
-from disease_reference import list_symptoms_for_crop, match_disease
+from disease_reference import DISEASE_REFERENCE, list_symptoms_for_crop, match_disease
 from fertilizer_recommendation import get_fertilizer_plan
-from knowledge_base import get_knowledge_base
+from knowledge_base import check_eligibility, get_knowledge_base
 from location_service import LocationService
 from market_service import MarketService
 from ml_models import CropRecommendationModel, WaterManagementAdvisor
+from notifications import build_notifications
 from profit_estimation import estimate_profit
 from soil_health import analyze_soil
 from weather_service import WeatherService
@@ -40,6 +44,7 @@ water_advisor = WaterManagementAdvisor()
 weather_service = WeatherService(os.getenv("OPENWEATHER_API_KEY"))
 market_service = MarketService(os.getenv("MARKET_API_KEY"))
 location_service = LocationService()
+chat_service = ChatService(os.getenv("ANTHROPIC_API_KEY"), os.getenv("CHAT_MODEL"))
 
 with open(os.path.join(BASE_DIR, "data", "states_districts.json"), encoding="utf-8") as f:
     STATES_DISTRICTS = json.load(f)
@@ -51,6 +56,13 @@ SEASONS = ["Kharif", "Rabi", "Summer", "Whole Year", "Winter", "Autumn"]
 UPLOAD_DIR = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_IMAGE_EXT = {"png", "jpg", "jpeg", "webp"}
+
+
+@app.context_processor
+def inject_user():
+    # Every template can reference `user` directly (e.g. base.html's nav),
+    # without each view function having to pass it in explicitly.
+    return {"user": auth.current_user()}
 
 
 def init_db():
@@ -95,12 +107,142 @@ def log_recommendation(payload, top_result, user_id=None):
         print(f"[app] could not log recommendation: {e}")
 
 
+# ========================================================================= #
+# Pages — every feature lives on its own route now, and every page except
+# /login requires a signed-in session (auth.page_login_required redirects
+# to /login instead of the app.py silently rendering nothing).
+# ========================================================================= #
 @app.route("/")
-def index():
-    return render_template("index.html")
+def root():
+    return redirect(url_for("home_page") if session.get("user_id") else url_for("login_page"))
 
 
+@app.route("/login")
+def login_page():
+    if session.get("user_id"):
+        return redirect(url_for("home_page"))
+    return render_template("login.html")
+
+
+@app.route("/home")
+@auth.page_login_required
+def home_page():
+    return render_template("home.html")
+
+
+@app.route("/profile")
+@auth.page_login_required
+def profile_page():
+    return render_template("profile.html")
+
+
+@app.route("/recommend")
+@auth.page_login_required
+def recommend_page():
+    return render_template("recommend.html")
+
+
+@app.route("/soil")
+@auth.page_login_required
+def soil_page():
+    return render_template("soil.html")
+
+
+@app.route("/yield")
+@auth.page_login_required
+def yield_page():
+    return render_template("yield.html")
+
+
+@app.route("/market")
+@auth.page_login_required
+def market_page():
+    return render_template("market.html")
+
+
+@app.route("/fertilizer")
+@auth.page_login_required
+def fertilizer_page():
+    return render_template("fertilizer.html")
+
+
+@app.route("/profit")
+@auth.page_login_required
+def profit_page():
+    return render_template("profit.html")
+
+
+@app.route("/disease")
+@auth.page_login_required
+def disease_page():
+    return render_template("disease.html")
+
+
+@app.route("/water")
+@auth.page_login_required
+def water_page():
+    return render_template("water.html")
+
+
+@app.route("/calendar")
+@auth.page_login_required
+def calendar_page():
+    return render_template("calendar.html")
+
+
+@app.route("/dashboard")
+@auth.page_login_required
+def dashboard_page():
+    return render_template("dashboard.html")
+
+
+@app.route("/map")
+@auth.page_login_required
+def map_page():
+    return render_template("map.html")
+
+
+@app.route("/knowledge")
+@auth.page_login_required
+def knowledge_page():
+    return render_template("knowledge.html")
+
+
+@app.route("/about")
+@auth.page_login_required
+def about_page():
+    return render_template("about.html")
+
+
+@app.route("/chat")
+@auth.page_login_required
+def chat_page():
+    return render_template("chat.html")
+
+
+@app.route("/records")
+@auth.page_login_required
+def records_page():
+    return render_template("records.html")
+
+
+@app.route("/analytics")
+@auth.page_login_required
+def analytics_page():
+    return render_template("analytics.html")
+
+
+@app.route("/admin")
+@auth.page_admin_required
+def admin_page():
+    return render_template("admin.html")
+
+
+# ========================================================================= #
+# Core data endpoints (still require login — see note above)
+# ========================================================================= #
 @app.route("/api/model-info")
+@auth.login_required
 def model_info():
     return jsonify({
         "success": True,
@@ -111,6 +253,7 @@ def model_info():
 
 
 @app.route("/api/reference-data")
+@auth.login_required
 def reference_data():
     return jsonify({
         "success": True,
@@ -127,7 +270,7 @@ def reference_data():
 
 
 # ========================================================================= #
-# Auth
+# Auth (these stay public — they're how you get a session in the first place)
 # ========================================================================= #
 @app.route("/api/auth/register", methods=["POST"])
 def register():
@@ -179,7 +322,6 @@ def me():
 @app.route("/api/auth/profile", methods=["PUT"])
 @auth.login_required
 def update_profile():
-    from flask import session
     data = request.json or {}
     auth.update_profile(
         session["user_id"], name=data.get("name"), location=data.get("location"),
@@ -233,10 +375,90 @@ def admin_users():
     })
 
 
+@app.route("/api/admin/stats")
+@auth.admin_required
+def admin_stats():
+    return jsonify({"success": True, "stats": get_admin_stats()})
+
+
+@app.route("/api/admin/crops")
+@auth.admin_required
+def admin_crops():
+    """Read-only view of the crop model's training coverage — 'managing
+    crops' here means seeing what the model actually knows, not editing
+    live ML training data through a form."""
+    return jsonify({
+        "success": True,
+        "crop_model": crop_model.get_model_info(),
+        "yield_model_crops": yield_model.get_model_info()["covered_crops"],
+        "market_model_crops": market_service.get_model_info()["covered_crops"],
+    })
+
+
+@app.route("/api/admin/weather-status")
+@auth.admin_required
+def admin_weather_status():
+    """A live diagnostic call so the admin can see the weather pipeline is
+    actually working, not a static status flag."""
+    try:
+        sample = weather_service.get_current_weather("Delhi")
+        return jsonify({"success": True, "sample": sample,
+                         "openweather_key_configured": bool(os.getenv("OPENWEATHER_API_KEY"))})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/admin/news", methods=["GET", "POST"])
+@auth.admin_required
+def admin_news():
+    if request.method == "POST":
+        data = request.json or {}
+        add_news(session["user_id"], data.get("title", ""), data.get("body", ""))
+        return jsonify({"success": True})
+    return jsonify({"success": True, "news": get_news()})
+
+
+@app.route("/api/admin/news/<int:news_id>", methods=["DELETE"])
+@auth.admin_required
+def admin_delete_news(news_id):
+    delete_news(news_id)
+    return jsonify({"success": True})
+
+
+@app.route("/api/news")
+@auth.login_required
+def public_news():
+    """Same announcements, read-only, for the farmer-facing home page."""
+    return jsonify({"success": True, "news": get_news(limit=5)})
+
+
+@app.route("/api/admin/disease-database", methods=["GET", "POST"])
+@auth.admin_required
+def admin_disease_database():
+    if request.method == "POST":
+        data = request.json or {}
+        add_custom_disease(
+            session["user_id"], data.get("crop", ""), data.get("disease", ""),
+            data.get("symptoms", []), data.get("cause", ""), data.get("treatment", ""),
+            data.get("recommended_fungicide", ""),
+        )
+        return jsonify({"success": True})
+    return jsonify({"success": True, "static_reference": DISEASE_REFERENCE,
+                     "custom_entries": get_custom_diseases()})
+
+
+@app.route("/api/admin/disease-database/<int:entry_id>", methods=["DELETE"])
+@auth.admin_required
+def admin_delete_disease(entry_id):
+    delete_custom_disease(entry_id)
+    return jsonify({"success": True})
+
+
 # ========================================================================= #
 # Location
 # ========================================================================= #
 @app.route("/api/reverse-geocode")
+@auth.login_required
 def reverse_geocode():
     try:
         lat = float(request.args.get("lat"))
@@ -250,6 +472,7 @@ def reverse_geocode():
 
 
 @app.route("/api/detect-location")
+@auth.login_required
 def detect_location():
     try:
         loc = location_service.get_location_from_ip()
@@ -275,6 +498,7 @@ def _weather_payload(current, forecast):
 
 
 @app.route("/api/weather/<location>")
+@auth.login_required
 def get_weather(location):
     try:
         current = weather_service.get_current_weather(location)
@@ -285,6 +509,7 @@ def get_weather(location):
 
 
 @app.route("/api/weather-by-coords")
+@auth.login_required
 def get_weather_by_coords():
     try:
         lat = float(request.args.get("lat"))
@@ -303,6 +528,7 @@ def get_weather_by_coords():
 # Crop recommendation
 # ========================================================================= #
 @app.route("/api/recommend-crops", methods=["POST"])
+@auth.login_required
 def recommend_crops():
     try:
         data = request.json or {}
@@ -418,6 +644,7 @@ def _add_profitability(recommendations):
 # Soil health
 # ========================================================================= #
 @app.route("/api/soil-health", methods=["POST"])
+@auth.login_required
 def soil_health():
     try:
         data = request.json or {}
@@ -440,6 +667,7 @@ def soil_health():
 # Irrigation
 # ========================================================================= #
 @app.route("/api/water-management", methods=["POST"])
+@auth.login_required
 def water_management():
     try:
         data = request.json or {}
@@ -488,6 +716,7 @@ def _irrigation_summary(schedule):
 # Market
 # ========================================================================= #
 @app.route("/api/market-trends/<crop>")
+@auth.login_required
 def get_market_trends(crop):
     try:
         state = request.args.get("state")
@@ -498,6 +727,7 @@ def get_market_trends(crop):
 
 
 @app.route("/api/market-prices/<crop>")
+@auth.login_required
 def get_market_prices(crop):
     try:
         state = request.args.get("state")
@@ -508,6 +738,7 @@ def get_market_prices(crop):
 
 
 @app.route("/api/market-nearby/<crop>")
+@auth.login_required
 def get_market_nearby(crop):
     try:
         lat = float(request.args.get("lat"))
@@ -524,6 +755,7 @@ def get_market_nearby(crop):
 # Fertilizer recommendation
 # ========================================================================= #
 @app.route("/api/fertilizer-plan", methods=["POST"])
+@auth.login_required
 def fertilizer_plan():
     try:
         data = request.json or {}
@@ -537,6 +769,7 @@ def fertilizer_plan():
 # Crop calendar
 # ========================================================================= #
 @app.route("/api/crop-calendar", methods=["POST"])
+@auth.login_required
 def crop_calendar():
     try:
         data = request.json or {}
@@ -549,6 +782,13 @@ def crop_calendar():
             crop.strip().lower(), water_advisor.default_profile
         )
         result = get_crop_calendar(crop, sowing_date, irrigation_interval_days=profile["interval_days"])
+
+        user = auth.current_user()
+        if user and result.get("covered") and result.get("type") == "annual":
+            farm_records.save_crop_plan(
+                user["id"], result["crop"], result["sowing_date"], result["expected_harvest_date"],
+                json.dumps(result["events"]),
+            )
         return jsonify({"success": True, "result": result})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -558,21 +798,29 @@ def crop_calendar():
 # Disease reference (symptom-based, NOT image AI — see disease_reference.py)
 # ========================================================================= #
 @app.route("/api/disease-symptoms/<crop>")
+@auth.login_required
 def disease_symptoms(crop):
-    return jsonify({"success": True, "result": list_symptoms_for_crop(crop)})
+    return jsonify({"success": True, "result": list_symptoms_for_crop(crop, extra_diseases=get_custom_diseases(crop))})
 
 
 @app.route("/api/disease-check", methods=["POST"])
+@auth.login_required
 def disease_check():
     try:
         data = request.json or {}
-        result = match_disease(data.get("crop", ""), data.get("symptoms", []))
+        crop = data.get("crop", "")
+        result = match_disease(crop, data.get("symptoms", []), extra_diseases=get_custom_diseases(crop))
+
+        user = auth.current_user()
+        if user and result.get("covered") and result.get("matches"):
+            farm_records.log_disease_check(user["id"], result["crop"], result["matches"][0]["disease"])
         return jsonify({"success": True, "result": result})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/disease-photo", methods=["POST"])
+@auth.login_required
 def disease_photo():
     """Stores an uploaded/captured leaf photo for the farmer's own record.
     It is NOT analyzed — see disease_reference.py for why there's no real
@@ -594,6 +842,7 @@ def disease_photo():
 # Standalone yield prediction
 # ========================================================================= #
 @app.route("/api/yield-prediction", methods=["POST"])
+@auth.login_required
 def yield_prediction():
     try:
         data = request.json or {}
@@ -630,6 +879,7 @@ def yield_prediction():
 # Profit estimation
 # ========================================================================= #
 @app.route("/api/profit-estimation", methods=["POST"])
+@auth.login_required
 def profit_estimation_route():
     try:
         data = request.json or {}
@@ -657,7 +907,6 @@ def profit_estimation_route():
 @app.route("/api/farm/expense", methods=["POST"])
 @auth.login_required
 def add_expense():
-    from flask import session
     data = request.json or {}
     farm_records.add_expense(session["user_id"], data.get("category", "other"),
                               float(data.get("amount_rs", 0)), data.get("crop"), data.get("note"))
@@ -667,7 +916,6 @@ def add_expense():
 @app.route("/api/farm/income", methods=["POST"])
 @auth.login_required
 def add_income():
-    from flask import session
     data = request.json or {}
     farm_records.add_income(session["user_id"], float(data.get("amount_rs", 0)),
                              data.get("crop"), data.get("note"))
@@ -677,16 +925,91 @@ def add_income():
 @app.route("/api/farm/dashboard")
 @auth.login_required
 def farm_dashboard():
-    from flask import session
     return jsonify({"success": True, "dashboard": farm_records.get_dashboard(session["user_id"])})
+
+
+@app.route("/api/farm/records")
+@auth.login_required
+def farm_records_route():
+    return jsonify({"success": True, "records": farm_records.get_farm_records(session["user_id"])})
+
+
+@app.route("/api/farm/fertilizer-usage", methods=["POST"])
+@auth.login_required
+def add_fertilizer_usage_route():
+    data = request.json or {}
+    farm_records.add_fertilizer_usage(
+        session["user_id"], data.get("crop"), data.get("fertilizer", ""),
+        float(data.get("quantity_kg", 0)) if data.get("quantity_kg") else None,
+        data.get("applied_on"), data.get("note"),
+    )
+    return jsonify({"success": True})
+
+
+@app.route("/api/farm/analytics")
+@auth.login_required
+def farm_analytics():
+    period = request.args.get("period", "monthly")
+    if period not in ("monthly", "yearly"):
+        period = "monthly"
+    return jsonify({"success": True, "analytics": farm_records.get_analytics(session["user_id"], period)})
 
 
 # ========================================================================= #
 # Knowledge base
 # ========================================================================= #
 @app.route("/api/knowledge-base")
+@auth.login_required
 def knowledge_base():
     return jsonify({"success": True, "result": get_knowledge_base()})
+
+
+@app.route("/api/schemes/eligibility", methods=["POST"])
+@auth.login_required
+def schemes_eligibility():
+    data = request.json or {}
+    result = check_eligibility(
+        owns_land=bool(data.get("owns_land")), grows_notified_crop=bool(data.get("grows_notified_crop")),
+        income_tax_payer=bool(data.get("income_tax_payer")),
+        government_employee=bool(data.get("government_employee")),
+    )
+    return jsonify({"success": True, "result": result})
+
+
+# ========================================================================= #
+# Smart notifications
+# ========================================================================= #
+@app.route("/api/notifications")
+@auth.login_required
+def notifications():
+    user = auth.current_user()
+    lat, lon = request.args.get("lat"), request.args.get("lon")
+
+    forecast = None
+    try:
+        if lat and lon:
+            forecast = weather_service.get_forecast_by_coords(float(lat), float(lon))
+        elif user and user.get("location"):
+            forecast = weather_service.get_forecast(user["location"])
+    except Exception:
+        forecast = None
+
+    crop_plans = farm_records.get_active_crop_plans(user["id"])
+    latest_match = farm_records.get_latest_disease_check(user["id"])
+
+    notifs = build_notifications(crop_plans, forecast, latest_disease_match=latest_match)
+    return jsonify({"success": True, "notifications": notifs})
+
+
+# ========================================================================= #
+# AI chatbot (real Anthropic API call — see chat_service.py)
+# ========================================================================= #
+@app.route("/api/chat", methods=["POST"])
+@auth.login_required
+def chat():
+    data = request.json or {}
+    result = chat_service.send_message(data.get("message", ""), history=data.get("history", []))
+    return jsonify(result)
 
 
 if __name__ == "__main__":

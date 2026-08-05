@@ -105,6 +105,77 @@ DISCLAIMER = (
     "on the official site before applying."
 )
 
+# Coarse, broadly-stable eligibility framing per scheme. This is
+# intentionally NOT a precise legal eligibility determination — exact
+# rules (income-tax-payer exclusions, land ceiling changes, notified crop
+# lists per district, etc.) change over time and I have no live search
+# tool in this build to verify today's exact criteria. This checker gives
+# an indicative "likely eligible to look into" signal on a few stable,
+# widely-known factors, and always says to confirm on the official portal.
+ELIGIBILITY_RULES = {
+    "PM-KISAN (Pradhan Mantri Kisan Samman Nidhi)": {
+        "requires": ["owns_land"],
+        "excludes": ["income_tax_payer", "government_employee"],
+        "note": "Broadly for landholding farmer families; several categories (income-tax payers, "
+                "government employees/pensioners above a certain level, institutional landholders) "
+                "are typically excluded. Exact rules are on the official portal.",
+    },
+    "PMFBY (Pradhan Mantri Fasal Bima Yojana)": {
+        "requires": ["grows_notified_crop"],
+        "excludes": [],
+        "note": "For farmers growing crops notified for insurance in their district/season — both "
+                "landowners and tenant/sharecropper farmers can typically apply.",
+    },
+    "Kisan Credit Card (KCC)": {
+        "requires": ["owns_land"],
+        "excludes": [],
+        "note": "Open to farmers, tenant farmers, and sharecroppers with cultivable land or a lease/"
+                "crop-sharing arrangement — check with your bank branch for documentation needed.",
+    },
+    "Soil Health Card Scheme": {
+        "requires": [],
+        "excludes": [],
+        "note": "Open to all farmers — apply through your local agriculture department for soil "
+                "sample collection.",
+    },
+    "PMKSY (Pradhan Mantri Krishi Sinchayee Yojana)": {
+        "requires": ["owns_land"],
+        "excludes": [],
+        "note": "Micro-irrigation subsidy component generally applies to farmers with land eligible "
+                "for drip/sprinkler installation — subsidy percentage varies by state and category.",
+    },
+    "e-NAM (National Agriculture Market)": {
+        "requires": [],
+        "excludes": [],
+        "note": "Open to farmers selling through a mandi registered on the e-NAM platform.",
+    },
+}
+
+
+def check_eligibility(owns_land=False, grows_notified_crop=False, income_tax_payer=False,
+                       government_employee=False):
+    facts = {
+        "owns_land": owns_land, "grows_notified_crop": grows_notified_crop,
+        "income_tax_payer": income_tax_payer, "government_employee": government_employee,
+    }
+    results = []
+    for scheme in GOVERNMENT_SCHEMES:
+        rule = ELIGIBILITY_RULES.get(scheme["name"])
+        if not rule:
+            continue
+        meets_requirements = all(facts.get(r) for r in rule["requires"])
+        hits_exclusion = any(facts.get(e) for e in rule["excludes"])
+        likely_eligible = meets_requirements and not hits_exclusion
+        results.append({
+            "scheme": scheme["name"], "official_url": scheme["official_url"],
+            "likely_eligible": likely_eligible, "note": rule["note"],
+        })
+    return {
+        "results": results,
+        "disclaimer": "This is an indicative check on a few broad, stable factors — not a legal "
+                       "eligibility determination. Confirm on each scheme's official portal before applying.",
+    }
+
 
 def get_knowledge_base():
     return {

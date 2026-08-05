@@ -5,7 +5,18 @@ what it might fetch at market — using real trained ML models, real
 government datasets, and live weather/location data. Every module states
 plainly what is real and what is an explicitly-labeled fallback.
 
-## The 14 feature systems in this build
+## Structure: separate pages, sign-in required
+
+Every feature is its own page (`/recommend`, `/soil`, `/yield`, `/market`,
+`/fertilizer`, `/profit`, `/disease`, `/water`, `/calendar`, `/dashboard`,
+`/map`, `/knowledge`, `/chat`, `/about`, `/profile`) rather than one long
+scrolling page — there's a persistent nav across all of them
+(`templates/base.html`). **Every page and every feature API endpoint
+requires a signed-in session** — `/login` is the only public page, and
+`auth.page_login_required` / `auth.login_required` redirect or 401
+anything else if you're not signed in.
+
+## The 19 feature systems in this build
 
 1. **User authentication** — registration/login, farmer profile, forgot
    password, role-based access (farmer/admin)
@@ -38,7 +49,21 @@ plainly what is real and what is an explicitly-labeled fallback.
 13. **Interactive farm map** — free Leaflet + OpenStreetMap (no API key),
     shows your real GPS location and real nearby markets
 14. **Farming knowledge base** — articles, best practices, organic
-    farming, pest management, and real government scheme links
+    farming, pest management, real government scheme links, and an
+    eligibility checker (indicative, not authoritative)
+15. **Smart notifications** — rain tomorrow, fertilizer due today, harvest
+    approaching, and a general fungal-disease-risk weather flag, all
+    derived from your saved crop calendars and real weather
+16. **AI chatbot** — real Anthropic API integration (needs your own API
+    key; says so honestly if unconfigured, doesn't fake a reply)
+17. **Farm records** — a unified page for crops grown, yield history,
+    fertilizer usage (log it manually), expenses, and income
+18. **Analytics** — monthly/yearly charts for yield, profit, water usage,
+    and crop comparison, aggregated from your own real logs
+19. **Admin panel** — manage farmers, view real crop/weather/market model
+    status, post news announcements, extend the disease database, and a
+    dashboard with active users / recommendations generated / disease
+    scans (revenue is honestly reported as N/A — no billing system exists)
 
 Everything auto-fills from your real GPS location where possible.
 
@@ -68,6 +93,16 @@ Everything auto-fills from your real GPS location where possible.
 | Knowledge base articles / best practices / organic farming / pest management | General agronomy reference content. | **Real, general knowledge**, not sourced from a live database. |
 | Knowledge base government schemes | Real, well-known central government scheme names + official URLs. | **Real names/URLs.** Amounts and eligibility criteria aren't stated, since those change and I can't verify current figures without a live search tool in this build. |
 | Knowledge base videos | — | **Deliberately omitted.** I have no web-search/fetch tool in this build to find and verify real video links, and guessing them risks shipping dead or wrong URLs. Each article has a suggested search term instead. |
+| Eligibility checker | A coarse rule engine over a few stable, broadly-known factors (land ownership, notified crop, tax/employment status) per scheme. | **Indicative, not authoritative** — exact eligibility rules change and I can't verify today's criteria without a live search tool. Always says to confirm on the official portal. |
+| Smart notifications | Real saved crop-calendar events (fertilizer/harvest dates) + real weather forecast + your last real disease-check result. | **Real, derived from data already computed elsewhere in the app** — no separate prediction system. The "disease risk" notification is a general weather-based flag (humidity/temperature thresholds that favor fungal disease), explicitly not a diagnosis. |
+| AI chatbot | Real Anthropic API call (`chat_service.py`), with a system prompt describing what Krushi's own tools actually cover. | **Real, once you add `ANTHROPIC_API_KEY`.** Without a key, the chat page says so plainly — it does not fall back to a scripted fake response. |
+| Farm records (crops grown, yield, expenses, income, fertilizer usage) | Each pulled from its own real table — crops grown and yield populate automatically from the Crop Calendar and Yield Prediction tools; fertilizer usage is logged manually. | **Real, entirely your own data.** |
+| Analytics (monthly/yearly yield, profit, crop comparison, water usage) | Real aggregation (sums/groupings) of the same logs behind Farm Records and the Farm Dashboard. | **Real arithmetic on real data** — no forecasting, no trend-fitting. |
+| Admin: farmers / crops / weather / market panels | Real queries — user list, live model info, a live weather API call, live market model stats. | **Real, live.** |
+| Admin: news | A real announcements table — admin posts, everyone sees on the home page. | **Real, but editorial content**, not an external news feed (no search tool available to pull real agri news). |
+| Admin: disease database | The static reference table (read-only) plus a real form to add new crop/symptom/treatment entries, which immediately show up in the Disease Check tool. | **Real CRUD**, not a bigger pre-loaded database. |
+| Admin dashboard: active users / recommendations / disease scans | Real SQL queries against the app's own tables ("active" = has a real log entry in the last 30 days). | **Real.** |
+| Admin dashboard: revenue | — | **Explicitly N/A.** Krushi has no billing/subscription system in this build, so there is no real number to report — the dashboard says so instead of inventing one. |
 
 ### Why disease detection isn't an image classifier
 
@@ -157,6 +192,11 @@ krushi/
 ├── disease_reference.py       # Symptom-matching disease reference (not image AI)
 ├── weather_service.py        # Open-Meteo / OpenWeatherMap + rain/heatwave alerts
 ├── location_service.py       # Reverse geocoding (GPS) + IP fallback
+├── farm_records.py            # Expense/income/soil/water/yield logs, crop plans, fertilizer usage, analytics
+├── admin_tools.py             # Admin panel backend: news, disease DB entries, real usage stats
+├── notifications.py           # Rain/fertilizer/harvest/disease-risk alerts, from real saved data
+├── chat_service.py            # Real Anthropic API chatbot integration
+├── knowledge_base.py          # Articles, schemes, eligibility checker
 ├── scripts/create_admin.py   # CLI-only admin account creation
 ├── data/
 │   ├── Crop_recommendation.csv       # real 2,200-row crop training dataset
@@ -165,9 +205,17 @@ krushi/
 │   ├── market_prices_by_location.csv # same data, decoded to real market names
 │   ├── crop_info.json                # season / water need / market demand per crop
 │   └── states_districts.json         # Indian states + districts for form dropdowns
-├── templates/index.html
+├── templates/
+│   ├── base.html              # shared nav/footer, extended by every page below
+│   ├── login.html             # the only public page
+│   ├── home.html, recommend.html, soil.html, yield.html, market.html,
+│   │   fertilizer.html, profit.html, disease.html, water.html, calendar.html,
+│   │   dashboard.html, records.html, analytics.html, map.html, knowledge.html,
+│   │   chat.html, about.html, profile.html, admin.html
+│   │   # one page per feature, all login-gated (admin.html: admin role only)
 ├── static/css/style.css
-├── static/js/script.js
+├── static/js/common.js        # runs on every page: nav logout, notif badge
+├── static/js/script.js        # all feature logic, one initXPage() per page
 ├── requirements.txt
 └── .env.example
 ```
@@ -212,6 +260,22 @@ krushi/
 | `/api/farm/income` | POST | Log income (login required) |
 | `/api/farm/dashboard` | GET | Your dashboard data (login required) |
 | `/api/knowledge-base` | GET | Articles/best practices/schemes/etc. |
+| `/api/schemes/eligibility` | POST | Indicative scheme eligibility check |
+| `/api/notifications` | GET | Rain/fertilizer/harvest/disease-risk alerts |
+| `/api/chat` | POST | Chatbot reply (needs `ANTHROPIC_API_KEY`) |
+| `/api/farm/records` | GET | Crops grown / yield / expenses / income / fertilizer usage |
+| `/api/farm/fertilizer-usage` | POST | Log a fertilizer application |
+| `/api/farm/analytics?period=` | GET | Monthly/yearly aggregated analytics |
+| `/api/news` | GET | Public announcements (read-only) |
+| `/api/admin/stats` | GET | Real usage stats (admin only) |
+| `/api/admin/crops` | GET | Live model coverage (admin only) |
+| `/api/admin/weather-status` | GET | Live weather API check (admin only) |
+| `/api/admin/news` | GET/POST | List/post announcements (admin only) |
+| `/api/admin/disease-database` | GET/POST | View/add disease reference entries (admin only) |
+
+All of the above (except the `/api/auth/*` endpoints) require a signed-in
+session — every page route does too, redirecting to `/login` if you're not
+signed in.
 
 `POST /api/recommend-crops` body:
 ```json
@@ -274,9 +338,12 @@ bug; it's fixed). Admin accounts are created only via
 
 ## Not in this build yet
 
-Real AI disease detection from photos (needs a trained CV model that
-actually installs — see above), an LLM chatbot (needs an API key), farm
-records editing/deletion (records can be added but not yet edited/removed
-from the UI), multi-language content (the language *preference* is stored
-on the profile; translated UI strings aren't wired up yet), and smart
-notifications beyond the in-app rain/heatwave alerts.
+This was the last batch of the original 22-feature list. What's still not
+genuinely real, by design: AI disease detection from photos (needs a
+trained CV model that actually installs — see above), translated UI
+strings for the 6 supported languages (the language *preference* is
+stored on the profile; the UI itself is still English-only), farm records
+editing/deletion (records can be added but not yet edited/removed from
+the UI), and real external agri news (the "News" feature is an internal
+admin-posted announcements board, not a live news feed, since there's no
+search tool in this build to source and verify real articles).

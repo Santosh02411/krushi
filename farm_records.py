@@ -53,6 +53,43 @@ def init_farm_tables():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS crop_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            crop TEXT NOT NULL, sowing_date TEXT NOT NULL, harvest_date TEXT,
+            calendar_json TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS disease_checks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            crop TEXT, matched_disease TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fertilizer_usage_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL,
+            crop TEXT, fertilizer TEXT NOT NULL, quantity_kg REAL, applied_on TEXT, note TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS admin_news (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, posted_by INTEGER NOT NULL,
+            title TEXT NOT NULL, body TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS custom_diseases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, added_by INTEGER NOT NULL,
+            crop TEXT NOT NULL, disease TEXT NOT NULL, symptoms TEXT NOT NULL,
+            cause TEXT, treatment TEXT, recommended_fungicide TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -99,12 +136,134 @@ def log_yield_prediction(user_id, crop, area_acres, predicted_yield_tonnes, mode
     conn.close()
 
 
+def log_disease_check(user_id, crop, matched_disease):
+    conn = get_db()
+    conn.execute("INSERT INTO disease_checks (user_id, crop, matched_disease) VALUES (?, ?, ?)",
+                 (user_id, crop, matched_disease))
+    conn.commit()
+    conn.close()
+
+
+def get_latest_disease_check(user_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM disease_checks WHERE user_id = ? ORDER BY created_at DESC LIMIT 1", (user_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {"disease": row["matched_disease"], "crop": row["crop"], "created_at": row["created_at"]}
+
+
+def save_crop_plan(user_id, crop, sowing_date, harvest_date, calendar_json):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO crop_plans (user_id, crop, sowing_date, harvest_date, calendar_json) VALUES (?, ?, ?, ?, ?)",
+        (user_id, crop, sowing_date, harvest_date, calendar_json),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_active_crop_plans(user_id):
+    """Plans whose harvest date hasn't passed yet — these are what
+    notifications.py checks against."""
+    conn = get_db()
+    today = datetime.now().date().isoformat()
+    rows = conn.execute(
+        "SELECT * FROM crop_plans WHERE user_id = ? AND (harvest_date IS NULL OR harvest_date >= ?) "
+        "ORDER BY sowing_date DESC",
+        (user_id, today),
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def add_fertilizer_usage(user_id, crop, fertilizer, quantity_kg, applied_on=None, note=None):
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO fertilizer_usage_logs (user_id, crop, fertilizer, quantity_kg, applied_on, note) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (user_id, crop, fertilizer, quantity_kg, applied_on, note),
+    )
+    conn.commit()
+    conn.close()
+
+
 def _rows(user_id, table, limit=50):
     conn = get_db()
     rows = conn.execute(f"SELECT * FROM {table} WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
                          (user_id, limit)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_farm_records(user_id):
+    """Unified view for the Farm Records page: crops grown, yield, expenses,
+    income, fertilizer usage — each pulled straight from its own real
+    table, nothing synthesized."""
+    return {
+        "crops_grown": _rows(user_id, "crop_plans"),
+        "yield_history": _rows(user_id, "yield_logs"),
+        "expenses": _rows(user_id, "expenses"),
+        "income": _rows(user_id, "income"),
+        "fertilizer_usage": _rows(user_id, "fertilizer_usage_logs"),
+    }
+
+
+def _bucket_key(created_at, period):
+    # created_at is 'YYYY-MM-DD HH:MM:SS' from SQLite CURRENT_TIMESTAMP
+    return created_at[:7] if period == "monthly" else created_at[:4]  # YYYY-MM or YYYY
+
+
+def get_analytics(user_id, period="monthly"):
+    """Real aggregation of the farmer's own logged data, bucketed by month
+    or year — no forecasting, no synthetic trend, just sums/averages of
+    what's actually been recorded."""
+    conn = get_db()
+    yield_rows = conn.execute("SELECT * FROM yield_logs WHERE user_id = ?", (user_id,)).fetchall()
+    expense_rows = conn.execute("SELECT * FROM expenses WHERE user_id = ?", (user_id,)).fetchall()
+    income_rows = conn.execute("SELECT * FROM income WHERE user_id = ?", (user_id,)).fetchall()
+    water_rows = conn.execute("SELECT * FROM water_usage_logs WHERE user_id = ?", (user_id,)).fetchall()
+    conn.close()
+
+    def bucket_sum(rows, amount_key):
+        buckets = {}
+        for r in rows:
+            k = _bucket_key(r["created_at"], period)
+            buckets[k] = buckets.get(k, 0) + (r[amount_key] or 0)
+        return dict(sorted(buckets.items()))
+
+    yield_by_period = bucket_sum(yield_rows, "predicted_yield_tonnes")
+    expenses_by_period = bucket_sum(expense_rows, "amount_rs")
+    income_by_period = bucket_sum(income_rows, "amount_rs")
+    water_by_period = bucket_sum(water_rows, "total_water_mm")
+
+    profit_by_period = {}
+    for k in set(list(expenses_by_period.keys()) + list(income_by_period.keys())):
+        profit_by_period[k] = round(income_by_period.get(k, 0) - expenses_by_period.get(k, 0), 2)
+    profit_by_period = dict(sorted(profit_by_period.items()))
+
+    crop_comparison = {}
+    for r in yield_rows:
+        crop = r["crop"] or "unknown"
+        crop_comparison.setdefault(crop, {"total_yield_tonnes": 0, "count": 0})
+        crop_comparison[crop]["total_yield_tonnes"] += r["predicted_yield_tonnes"] or 0
+        crop_comparison[crop]["count"] += 1
+    for crop, exp in [(r["crop"] or "unknown", r["amount_rs"]) for r in expense_rows]:
+        crop_comparison.setdefault(crop, {"total_yield_tonnes": 0, "count": 0})
+        crop_comparison[crop]["total_expenses_rs"] = crop_comparison[crop].get("total_expenses_rs", 0) + exp
+
+    return {
+        "period": period,
+        "yield_by_period": yield_by_period,
+        "expenses_by_period": expenses_by_period,
+        "income_by_period": income_by_period,
+        "profit_by_period": profit_by_period,
+        "water_usage_by_period": water_by_period,
+        "crop_comparison": crop_comparison,
+        "has_data": bool(yield_rows or expense_rows or income_rows or water_rows),
+    }
 
 
 def get_dashboard(user_id):

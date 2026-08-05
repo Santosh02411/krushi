@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Farm dashboard{% endblock %}
+{% block content %}
+<section id="dashboard">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Login required</div>
+      <h2>Farm dashboard</h2>
+      <p>Charts built from your own real data — soil health checks, water usage, and yield
+        predictions log automatically when you're signed in; add expenses/income below.</p>
+    </div>
+
+    <div id="dashboard-logged-out" class="card" style="max-width:520px;">
+      <p class="hint">Sign in above to see your dashboard — a new account starts empty, since there's
+        no real history to show yet.</p>
+    </div>
+
+    <div id="dashboard-content" style="display:none;">
+      <div class="card" style="max-width:640px; margin-bottom:24px;">
+        <h3 style="font-size:1rem;">Add a record</h3>
+        <div class="field-row">
+          <div class="field"><label for="rec-type">Type</label>
+            <select id="rec-type"><option value="expense">Expense</option><option value="income">Income</option></select>
+          </div>
+          <div class="field" id="rec-category-field"><label for="rec-category">Category</label>
+            <select id="rec-category"><option>seeds</option><option>fertilizer</option><option>labour</option><option>water</option><option>pesticides</option><option>other</option></select>
+          </div>
+          <div class="field"><label for="rec-amount">Amount (₹)</label><input type="number" id="rec-amount" value="0"></div>
+          <div class="field"><label for="rec-crop">Crop</label><input type="text" id="rec-crop" placeholder="optional"></div>
+        </div>
+        <button class="btn btn-ghost btn-small" id="add-record-btn" type="button">Add record</button>
+      </div>
+
+      <div id="dashboard-empty" class="empty-dash" style="display:none;">No records yet — add an expense/income above, or run a soil health check / irrigation schedule while signed in to start building your dashboard.</div>
+
+      <div id="dashboard-charts-wrap">
+        <div class="dash-summary-row" id="dash-summary"></div>
+        <div class="dash-charts">
+          <div class="chart-card"><h4>Expenses by category</h4><canvas id="chart-expenses"></canvas></div>
+          <div class="chart-card"><h4>Income vs. expenses</h4><canvas id="chart-income-expense"></canvas></div>
+          <div class="chart-card"><h4>Soil health score history</h4><canvas id="chart-soil"></canvas></div>
+          <div class="chart-card"><h4>Water usage per irrigation plan (mm)</h4><canvas id="chart-water"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block page_script %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => { initCommon(); initDashboardPage(); });
+</script>
+{% endblock %}

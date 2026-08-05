@@ -19,7 +19,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import g, jsonify, session
+from flask import g, jsonify, redirect, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "krushi.db")
@@ -192,6 +192,31 @@ def login_required(fn):
     def wrapper(*args, **kwargs):
         if not session.get("user_id"):
             return jsonify({"success": False, "error": "Login required."}), 401
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def page_login_required(fn):
+    """Like login_required, but for HTML page routes: redirects to /login
+    instead of returning a JSON 401, since a browser navigating to a page
+    needs a page back, not an API error body."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login_page", next=request.path))
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def page_admin_required(fn):
+    """Page-route version of admin_required: redirects rather than
+    returning a JSON error body."""
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login_page", next=request.path))
+        if session.get("role") != "admin":
+            return redirect(url_for("home_page"))
         return fn(*args, **kwargs)
     return wrapper
 

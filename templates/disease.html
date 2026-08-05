@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Disease check{% endblock %}
+{% block content %}
+<section id="disease" class="alt">
+  <div class="container">
+    <div class="section-head">
+      <div class="eyebrow on-light">Step 5</div>
+      <h2>Disease check</h2>
+      <p>Select the crop and the symptoms you see to match against common known diseases. This is a
+        <b>symptom-matching reference, not image AI</b> — no reliable free image-disease model exists
+        that I'd trust to ship here. The photo below is kept for your own record only.</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="card">
+        <div class="field"><label for="disease-crop">Crop</label>
+          <select id="disease-crop">
+            <option value="rice">Rice</option><option value="wheat">Wheat</option>
+            <option value="cotton">Cotton</option><option value="potato">Potato</option>
+            <option value="maize">Maize</option>
+          </select>
+        </div>
+        <button class="btn btn-ghost btn-small" id="load-symptoms-btn" type="button">Load symptoms for this crop</button>
+        <div class="symptom-list" id="symptom-list"></div>
+        <button class="btn btn-primary" id="disease-check-btn" type="button" style="margin-top:10px;">Check</button>
+        <div class="loading-note" id="disease-loading">Matching…</div>
+        <div class="error-note" id="disease-error"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:1rem;">Photo (optional, for your record)</h3>
+        <div class="photo-upload-area">
+          <input type="file" id="disease-photo-input" accept="image/*" capture="environment">
+          <p class="hint" style="margin-top:8px;">Upload or take a photo — not analyzed, just saved for you to reference.</p>
+          <img id="photo-preview" class="photo-preview" style="display:none;">
+        </div>
+      </div>
+    </div>
+
+    <div id="disease-results" style="display:none; margin-top:26px;"></div>
+  </div>
+</section>
+{% endblock %}
+{% block page_script %}
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => { initCommon(); initDiseasePage(); });
+</script>
+{% endblock %}

@@ -1,36 +1,19 @@
 // Krushi frontend — talks to the Flask API in app.py.
+// Each page calls initCommon() + its own initXPage() from an inline
+// <script> block in its template (see templates/base.html and friends) —
+// there is no longer one big DOMContentLoaded wiring every page's
+// elements at once, since each feature now lives on its own page.
 
 const $ = (id) => document.getElementById(id);
 let userCoords = null; // real GPS coords once granted
 let referenceData = null;
 let currentUser = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadModelInfo();
+// ---------------------------------------------------------------------- //
+// Per-page init functions
+// ---------------------------------------------------------------------- //
+function initLoginPage() {
   loadReferenceData();
-  checkSession();
-
-  $('detect-btn').addEventListener('click', detectLocation);
-  $('fetch-weather-btn').addEventListener('click', fetchWeatherPreview);
-  $('recommend-btn').addEventListener('click', getRecommendations);
-  $('water-btn').addEventListener('click', getIrrigationSchedule);
-  $('soil-health-btn').addEventListener('click', getSoilHealth);
-  $('market-search-btn').addEventListener('click', searchMarket);
-  $('state').addEventListener('change', populateDistricts);
-  $('fertilizer-btn').addEventListener('click', getFertilizerPlan);
-  $('load-symptoms-btn').addEventListener('click', loadSymptoms);
-  $('disease-check-btn').addEventListener('click', checkDisease);
-  $('disease-photo-input').addEventListener('change', uploadDiseasePhoto);
-  $('calendar-btn').addEventListener('click', buildCropCalendar);
-  if ($('cal-sowing-date')) $('cal-sowing-date').value = new Date().toISOString().slice(0, 10);
-  $('yield-predict-btn').addEventListener('click', predictYield);
-  $('profit-btn').addEventListener('click', estimateProfit);
-  $('rec-type').addEventListener('change', toggleRecordCategory);
-  $('add-record-btn').addEventListener('click', addFarmRecord);
-  $('map-refresh-btn').addEventListener('click', refreshFarmMap);
-  document.querySelectorAll('.kb-tab').forEach(tab => tab.addEventListener('click', () => switchKbTab(tab.dataset.kb)));
-  loadKnowledgeBase();
-
   document.querySelectorAll('.auth-tab').forEach(tab => {
     tab.addEventListener('click', () => switchAuthTab(tab.dataset.tab));
   });
@@ -38,9 +21,143 @@ document.addEventListener('DOMContentLoaded', () => {
   $('register-form').addEventListener('submit', handleRegister);
   $('forgot-form').addEventListener('submit', handleForgot);
   $('reset-form').addEventListener('submit', handleReset);
+}
+
+function initProfilePage() {
+  loadReferenceData();
+  checkSession();
   $('save-profile-btn').addEventListener('click', saveProfile);
   $('logout-btn').addEventListener('click', handleLogout);
-});
+  if ($('admin-panel')) loadAdminUsers();
+}
+
+function initHomePage() {
+  loadModelInfo();
+  loadHomeNotifications();
+  loadHomeNews();
+}
+
+function initRecommendPage() {
+  loadReferenceData();
+  checkSession();
+  $('detect-btn').addEventListener('click', detectLocation);
+  $('fetch-weather-btn').addEventListener('click', fetchWeatherPreview);
+  $('recommend-btn').addEventListener('click', getRecommendations);
+  $('state').addEventListener('change', populateDistricts);
+}
+
+function initSoilPage() {
+  $('soil-health-btn').addEventListener('click', getSoilHealth);
+}
+
+function initYieldPage() {
+  loadReferenceData();
+  $('yield-predict-btn').addEventListener('click', predictYield);
+}
+
+function initMarketPage() {
+  checkSession();
+  loadReferenceData();
+  $('market-search-btn').addEventListener('click', searchMarket);
+}
+
+function initFertilizerPage() {
+  $('fertilizer-btn').addEventListener('click', getFertilizerPlan);
+}
+
+function initProfitPage() {
+  $('profit-btn').addEventListener('click', estimateProfit);
+}
+
+function initDiseasePage() {
+  $('load-symptoms-btn').addEventListener('click', loadSymptoms);
+  $('disease-check-btn').addEventListener('click', checkDisease);
+  $('disease-photo-input').addEventListener('change', uploadDiseasePhoto);
+}
+
+function initWaterPage() {
+  checkSession();
+  $('water-detect-btn').addEventListener('click', () => detectLocation('water-detect-btn', 'water-location-status', 'water-location'));
+  $('water-btn').addEventListener('click', getIrrigationSchedule);
+}
+
+function initCalendarPage() {
+  checkSession();
+  $('calendar-btn').addEventListener('click', buildCropCalendar);
+  if ($('cal-sowing-date')) $('cal-sowing-date').value = new Date().toISOString().slice(0, 10);
+}
+
+function initDashboardPage() {
+  $('rec-type').addEventListener('change', toggleRecordCategory);
+  $('add-record-btn').addEventListener('click', addFarmRecord);
+  loadDashboard();
+}
+
+function initMapPage() {
+  checkSession();
+  $('map-detect-btn').addEventListener('click', () => detectLocation('map-detect-btn', 'map-location-status'));
+  $('map-refresh-btn').addEventListener('click', refreshFarmMap);
+}
+
+function initKnowledgePage() {
+  document.querySelectorAll('.kb-tab').forEach(tab => tab.addEventListener('click', () => switchKbTab(tab.dataset.kb)));
+  loadKnowledgeBase();
+  $('eligibility-btn').addEventListener('click', checkSchemeEligibility);
+}
+
+async function checkSchemeEligibility() {
+  try {
+    const res = await fetch('/api/schemes/eligibility', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        owns_land: $('elig-owns-land').checked, grows_notified_crop: $('elig-notified-crop').checked,
+        income_tax_payer: $('elig-tax-payer').checked, government_employee: $('elig-govt-employee').checked,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) return;
+    $('eligibility-results').innerHTML = data.result.results.map(r => `
+      <div class="kb-scheme"><b>${r.likely_eligible ? '✅' : '⚠️'} ${r.scheme}</b>
+      <p class="hint" style="margin:4px 0;">${r.note}</p></div>`).join('') +
+      `<p class="hint">${data.result.disclaimer}</p>`;
+  } catch (e) { /* leave results as-is */ }
+}
+
+function initAboutPage() { /* static content, nothing to wire */ }
+
+function initChatPage() {
+  $('chat-send-btn').addEventListener('click', sendChatMessage);
+  $('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+  document.querySelectorAll('.chat-suggestion').forEach(btn => {
+    btn.addEventListener('click', () => { $('chat-input').value = btn.dataset.q; sendChatMessage(); });
+  });
+}
+
+function initRecordsPage() {
+  $('add-fertilizer-usage-btn').addEventListener('click', addFertilizerUsage);
+  loadFarmRecords();
+}
+
+function initAnalyticsPage() {
+  document.querySelectorAll('.kb-tab[data-period]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.kb-tab[data-period]').forEach(t => t.classList.toggle('active', t === tab));
+      loadAnalytics(tab.dataset.period);
+    });
+  });
+  loadAnalytics('monthly');
+}
+
+function initAdminPage() {
+  loadAdminStats();
+  document.querySelectorAll('.kb-tab[data-admin]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.kb-tab[data-admin]').forEach(t => t.classList.toggle('active', t === tab));
+      loadAdminTab(tab.dataset.admin);
+    });
+  });
+  loadAdminTab('farmers');
+}
 
 // ---------------------------------------------------------------------- //
 // Model stats
@@ -76,6 +193,7 @@ async function loadReferenceData() {
     fillSelect($('season'), data.seasons, 'Select season');
     fillSelect($('yp-state'), data.states, 'Any state');
     fillSelect($('yp-season'), data.seasons, 'Any season');
+    fillSelect($('market-state'), data.states, 'Any state');
     fillSelect($('reg-soil-type'), data.soil_types, 'Select soil type');
     fillSelect($('profile-soil-type'), data.soil_types, 'Select soil type');
     fillLangSelect($('reg-language'), data.languages);
@@ -118,23 +236,13 @@ async function checkSession() {
 
 function applyLoggedInState(user) {
   currentUser = user;
-  $('nav-account-link').textContent = `Hi, ${user.name}`;
-  $('auth-forms-wrap').style.display = 'none';
-  $('account-panel').classList.add('show');
-  $('profile-name').textContent = user.name;
-  $('profile-role').textContent = user.role;
-  $('profile-location').value = user.location || '';
-  $('profile-farm-size').value = user.farm_size_acres || '';
+  if ($('profile-name')) $('profile-name').textContent = user.name;
+  if ($('profile-role')) $('profile-role').textContent = user.role;
+  if ($('profile-location')) $('profile-location').value = user.location || '';
+  if ($('profile-farm-size')) $('profile-farm-size').value = user.farm_size_acres || '';
   if ($('profile-soil-type')) $('profile-soil-type').value = user.soil_type || '';
   if ($('profile-language')) $('profile-language').value = user.preferred_language || 'en';
-
-  if (user.location) $('location').value = user.location;
-
-  $('dashboard-logged-out').style.display = 'none';
-  $('dashboard-content').style.display = 'block';
-  loadDashboard();
-
-  if (user.role === 'admin') loadAdminUsers();
+  if ($('location') && user.location) $('location').value = user.location;
 }
 
 async function handleLogin(e) {
@@ -147,7 +255,7 @@ async function handleLogin(e) {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
-    applyLoggedInState(data.user);
+    window.location.href = '/home';
   } catch (err) {
     $('login-error').textContent = err.message || 'Login failed.';
     $('login-error').classList.add('show');
@@ -168,7 +276,7 @@ async function handleRegister(e) {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error);
-    applyLoggedInState(data.user);
+    window.location.href = '/home';
   } catch (err) {
     $('register-error').textContent = err.message || 'Registration failed.';
     $('register-error').classList.add('show');
@@ -236,12 +344,7 @@ async function saveProfile() {
 
 async function handleLogout() {
   await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-  currentUser = null;
-  $('nav-account-link').textContent = 'Login / Register';
-  $('auth-forms-wrap').style.display = '';
-  $('account-panel').classList.remove('show');
-  $('dashboard-logged-out').style.display = 'block';
-  $('dashboard-content').style.display = 'none';
+  window.location.href = '/login';
 }
 
 async function loadAdminUsers() {
@@ -260,9 +363,11 @@ async function loadAdminUsers() {
 // ---------------------------------------------------------------------- //
 // Location — browser GPS is the accurate path; IP lookup is a fallback
 // ---------------------------------------------------------------------- //
-async function detectLocation() {
-  const btn = $('detect-btn');
-  const status = $('location-status');
+async function detectLocation(btnId = 'detect-btn', statusId = 'location-status', locationFieldId = 'location') {
+  const btn = $(btnId);
+  const status = $(statusId);
+  const locationField = $(locationFieldId);
+  if (!btn || !status) return;
   btn.disabled = true;
   btn.textContent = 'Locating…';
   status.className = 'location-status';
@@ -284,16 +389,16 @@ async function detectLocation() {
         const res = await fetch(`/api/reverse-geocode?lat=${latitude}&lon=${longitude}`);
         const data = await res.json();
         if (data.success) {
-          $('location').value = data.location_string || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-          if (data.state && referenceData && referenceData.states.includes(data.state)) {
+          if (locationField) locationField.value = data.location_string || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          if (data.state && referenceData && referenceData.states.includes(data.state) && $('state')) {
             $('state').value = data.state;
             populateDistricts();
           }
-          status.textContent = `GPS-located (±${Math.round(accuracy)}m). Weather and climate values will use these exact coordinates.`;
+          status.textContent = `GPS-located (±${Math.round(accuracy)}m).`;
           status.classList.add('ok');
         }
       } catch (e) {
-        $('location').value = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        if (locationField) locationField.value = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
         status.textContent = `GPS coordinates captured (±${Math.round(accuracy)}m).`;
         status.classList.add('ok');
       }
@@ -307,7 +412,7 @@ async function detectLocation() {
         const res = await fetch('/api/detect-location');
         const data = await res.json();
         if (data.success) {
-          $('location').value = data.location;
+          if (locationField) locationField.value = data.location;
           userCoords = { lat: data.lat, lon: data.lon, accuracy: null };
           status.textContent = (data.accuracy_warning || '') + ' Detected: ' + data.location;
         }
@@ -600,7 +705,7 @@ async function searchMarket() {
   $('market-search-btn').disabled = true;
 
   try {
-    const state = $('state').value || '';
+    const state = ($('market-state') && $('market-state').value) || '';
     const [predRes, mandiRes] = await Promise.all([
       fetch(`/api/market-trends/${encodeURIComponent(crop)}${state ? '?state=' + encodeURIComponent(state) : ''}`),
       fetch(`/api/market-prices/${encodeURIComponent(crop)}`),
@@ -682,7 +787,7 @@ async function getIrrigationSchedule() {
   const payload = {
     crop_type: $('water-crop').value.trim() || 'rice',
     soil_type: $('water-soil').value.trim() || 'loamy',
-    location: $('water-location').value.trim() || $('location').value.trim() || 'Delhi',
+    location: $('water-location').value.trim() || (currentUser && currentUser.location) || 'Delhi',
   };
   if (userCoords) { payload.lat = userCoords.lat; payload.lon = userCoords.lon; }
 
@@ -1129,6 +1234,7 @@ async function loadKnowledgeBase() {
 
 function switchKbTab(tab) {
   document.querySelectorAll('.kb-tab').forEach(t => t.classList.toggle('active', t.dataset.kb === tab));
+  if ($('eligibility-checker')) $('eligibility-checker').style.display = tab === 'government_schemes' ? 'block' : 'none';
   if (!kbData) return;
   const el = $('kb-content');
 
@@ -1149,4 +1255,297 @@ function switchKbTab(tab) {
       <a href="${s.official_url}" target="_blank" rel="noopener">${s.official_url}</a></div>`).join('') +
       `<p class="hint" style="margin-top:10px;">${kbData.disclaimer}</p>`;
   }
+}
+
+// ---------------------------------------------------------------------- //
+// Home page notifications widget
+// ---------------------------------------------------------------------- //
+async function loadHomeNotifications() {
+  const el = $('home-notif-list');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/notifications', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success || !data.notifications.length) {
+      el.innerHTML = '<p class="notif-empty">Nothing needs attention right now — build a crop calendar to get fertilizer/harvest reminders.</p>';
+      return;
+    }
+    const icons = { rain: '🌧️', fertilizer: '🚜', harvest: '🌾', disease_risk: '🐛', disease_alert: '🐛' };
+    el.innerHTML = data.notifications.map(n => `
+      <div class="notif-item"><span class="icon">${icons[n.type] || '🔔'}</span>
+      <div><div class="title">${n.title}</div><div class="msg">${n.message}</div></div></div>`).join('');
+  } catch (e) {
+    el.innerHTML = '<p class="notif-empty">Could not load notifications.</p>';
+  }
+}
+
+// ---------------------------------------------------------------------- //
+// AI chatbot
+// ---------------------------------------------------------------------- //
+let chatHistory = [];
+
+async function sendChatMessage() {
+  const input = $('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+  const errorEl = $('chat-error');
+  errorEl.classList.remove('show');
+
+  appendChatMessage('user', message);
+  input.value = '';
+  $('chat-send-btn').disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history: chatHistory }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      appendChatMessage('system-note', data.error);
+      return;
+    }
+    chatHistory.push({ role: 'user', content: message }, { role: 'assistant', content: data.reply });
+    appendChatMessage('assistant', data.reply);
+  } catch (e) {
+    errorEl.textContent = 'Could not reach the chatbot.';
+    errorEl.classList.add('show');
+  } finally {
+    $('chat-send-btn').disabled = false;
+  }
+}
+
+function appendChatMessage(role, text) {
+  const win = $('chat-window');
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.textContent = text;
+  win.appendChild(div);
+  win.scrollTop = win.scrollHeight;
+}
+
+// ---------------------------------------------------------------------- //
+// Home page news widget
+// ---------------------------------------------------------------------- //
+async function loadHomeNews() {
+  const el = $('home-news-list');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/news', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success || !data.news.length) {
+      el.innerHTML = '<p class="notif-empty">No announcements yet.</p>';
+      return;
+    }
+    el.innerHTML = data.news.map(n => `
+      <div class="kb-article"><h4>${n.title}</h4><p class="hint">${n.body}</p>
+      <div class="search-hint">${n.posted_by_name} · ${n.created_at.slice(0, 10)}</div></div>`).join('');
+  } catch (e) {
+    el.innerHTML = '<p class="notif-empty">Could not load announcements.</p>';
+  }
+}
+
+// ---------------------------------------------------------------------- //
+// Farm records page
+// ---------------------------------------------------------------------- //
+async function addFertilizerUsage() {
+  try {
+    await fetch('/api/farm/fertilizer-usage', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        crop: $('fu-crop').value.trim(), fertilizer: $('fu-fertilizer').value.trim(),
+        quantity_kg: parseFloat($('fu-quantity').value) || null, applied_on: $('fu-date').value || null,
+      }),
+    });
+    $('fu-crop').value = ''; $('fu-fertilizer').value = ''; $('fu-quantity').value = '';
+    loadFarmRecords();
+  } catch (e) { /* leave form as-is */ }
+}
+
+async function loadFarmRecords() {
+  try {
+    const res = await fetch('/api/farm/records', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    renderFarmRecords(data.records);
+  } catch (e) { /* tables stay empty */ }
+}
+
+function renderFarmRecords(records) {
+  const tbl = (id, rows, cols) => {
+    const el = $(id);
+    if (!el) return;
+    const tbody = el.querySelector('tbody');
+    if (!rows.length) { tbody.innerHTML = '<tr><td class="not-available">No records yet.</td></tr>'; return; }
+    tbody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('')}</tr>`).join('');
+  };
+  tbl('records-crops', records.crops_grown, ['crop', 'sowing_date', 'harvest_date']);
+  tbl('records-yield', records.yield_history, ['crop', 'area_acres', 'predicted_yield_tonnes', 'created_at']);
+  tbl('records-fertilizer', records.fertilizer_usage, ['crop', 'fertilizer', 'quantity_kg', 'applied_on']);
+  tbl('records-expenses', records.expenses, ['category', 'amount_rs', 'crop', 'created_at']);
+  tbl('records-income', records.income, ['amount_rs', 'crop', 'created_at']);
+}
+
+// ---------------------------------------------------------------------- //
+// Analytics page
+// ---------------------------------------------------------------------- //
+let analyticsCharts = {};
+
+async function loadAnalytics(period) {
+  try {
+    const res = await fetch(`/api/farm/analytics?period=${period}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    renderAnalytics(data.analytics);
+  } catch (e) { /* charts stay empty */ }
+}
+
+function renderAnalytics(a) {
+  if (!a.has_data) {
+    $('analytics-empty').style.display = 'block';
+    $('analytics-charts').style.display = 'none';
+    return;
+  }
+  $('analytics-empty').style.display = 'none';
+  $('analytics-charts').style.display = 'grid';
+
+  drawAnalyticsChart('chart-analytics-yield', 'line', Object.keys(a.yield_by_period), [{
+    label: 'Yield (tonnes)', data: Object.values(a.yield_by_period), borderColor: '#6FA96B', tension: .3,
+  }]);
+  drawAnalyticsChart('chart-analytics-profit', 'bar', Object.keys(a.profit_by_period), [{
+    label: 'Profit (₹)', data: Object.values(a.profit_by_period), backgroundColor: '#E2892C',
+  }]);
+  drawAnalyticsChart('chart-analytics-water', 'bar', Object.keys(a.water_usage_by_period), [{
+    label: 'Water (mm)', data: Object.values(a.water_usage_by_period), backgroundColor: '#4C91C5',
+  }]);
+  const crops = Object.keys(a.crop_comparison);
+  drawAnalyticsChart('chart-analytics-crops', 'bar', crops, [{
+    label: 'Total yield (tonnes)', data: crops.map(c => a.crop_comparison[c].total_yield_tonnes || 0),
+    backgroundColor: '#9C5A3C',
+  }]);
+}
+
+function drawAnalyticsChart(canvasId, type, labels, datasets) {
+  if (typeof Chart === 'undefined') return;
+  if (analyticsCharts[canvasId]) analyticsCharts[canvasId].destroy();
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  analyticsCharts[canvasId] = new Chart(ctx, { type, data: { labels, datasets }, options: { responsive: true } });
+}
+
+// ---------------------------------------------------------------------- //
+// Admin panel
+// ---------------------------------------------------------------------- //
+async function loadAdminStats() {
+  try {
+    const res = await fetch('/api/admin/stats', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    const s = data.stats;
+    $('admin-stats-row').innerHTML = `
+      <div class="dash-stat"><div class="n">${s.total_users}</div><div class="label">Total farmers</div></div>
+      <div class="dash-stat"><div class="n">${s.active_users_30d}</div><div class="label">Active (30d)</div></div>
+      <div class="dash-stat"><div class="n">${s.recommendations_generated}</div><div class="label">Recommendations generated</div></div>
+      <div class="dash-stat"><div class="n">${s.disease_scans}</div><div class="label">Disease scans</div></div>
+      <div class="dash-stat"><div class="n">N/A</div><div class="label">Revenue</div></div>`;
+  } catch (e) { /* stats row stays empty */ }
+}
+
+async function loadAdminTab(tab) {
+  const el = $('admin-panel-content');
+  el.innerHTML = '<p class="notif-empty">Loading…</p>';
+
+  if (tab === 'farmers') {
+    const res = await fetch('/api/admin/users', { credentials: 'include' });
+    const data = await res.json();
+    el.innerHTML = `<table class="schedule-table"><thead><tr><th>Name</th><th>Email</th><th>Location</th><th>Role</th><th>Joined</th></tr></thead>
+      <tbody>${data.users.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.location || '—'}</td><td>${u.role}</td><td>${u.created_at.slice(0, 10)}</td></tr>`).join('')}</tbody></table>`;
+  } else if (tab === 'crops') {
+    const res = await fetch('/api/admin/crops', { credentials: 'include' });
+    const data = await res.json();
+    el.innerHTML = `
+      <p class="hint">Crop model: ${data.crop_model.crop_classes} crops, ${data.crop_model.test_accuracy_pct}% test accuracy</p>
+      <p class="hint">Yield model covers: ${data.yield_model_crops.join(', ')}</p>
+      <p class="hint">Market model covers: ${data.market_model_crops.join(', ')}</p>`;
+  } else if (tab === 'weather') {
+    const res = await fetch('/api/admin/weather-status', { credentials: 'include' });
+    const data = await res.json();
+    el.innerHTML = data.success
+      ? `<p class="hint">Live sample (Delhi): ${data.sample.temperature}°C, ${data.sample.humidity}% humidity — source: ${data.sample.source}</p>
+         <p class="hint">OpenWeatherMap key configured: ${data.openweather_key_configured ? 'yes' : 'no (using Open-Meteo)'}</p>`
+      : `<p class="not-available">Weather check failed: ${data.error}</p>`;
+  } else if (tab === 'market') {
+    const res = await fetch('/api/model-info', { credentials: 'include' });
+    const data = await res.json();
+    el.innerHTML = `<p class="hint">Market model: ${data.market_model.training_records} real records, R²=${data.market_model.test_r2}</p>
+      <p class="hint">Covers: ${data.market_model.covered_crops.join(', ')}</p>`;
+  } else if (tab === 'news') {
+    renderAdminNews();
+  } else if (tab === 'disease') {
+    renderAdminDiseaseDb();
+  }
+}
+
+async function renderAdminNews() {
+  const el = $('admin-panel-content');
+  const res = await fetch('/api/admin/news', { credentials: 'include' });
+  const data = await res.json();
+  el.innerHTML = `
+    <div class="card" style="max-width:520px; margin-bottom:16px;">
+      <div class="field"><label for="news-title">Title</label><input type="text" id="news-title"></div>
+      <div class="field"><label for="news-body">Body</label><input type="text" id="news-body"></div>
+      <button class="btn btn-ghost btn-small" id="post-news-btn" type="button">Post</button>
+    </div>
+    <div id="admin-news-list">${data.news.map(n => `
+      <div class="kb-article"><h4>${n.title}</h4><p class="hint">${n.body}</p>
+      <button class="market-toggle" data-id="${n.id}" type="button">Delete</button></div>`).join('')}</div>`;
+
+  $('post-news-btn').addEventListener('click', async () => {
+    await fetch('/api/admin/news', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: $('news-title').value, body: $('news-body').value }),
+    });
+    renderAdminNews();
+  });
+  document.querySelectorAll('#admin-news-list .market-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await fetch(`/api/admin/news/${btn.dataset.id}`, { method: 'DELETE', credentials: 'include' });
+      renderAdminNews();
+    });
+  });
+}
+
+async function renderAdminDiseaseDb() {
+  const el = $('admin-panel-content');
+  const res = await fetch('/api/admin/disease-database', { credentials: 'include' });
+  const data = await res.json();
+  const staticCount = Object.values(data.static_reference).reduce((sum, arr) => sum + arr.length, 0);
+  el.innerHTML = `
+    <p class="hint">${staticCount} built-in reference entries across ${Object.keys(data.static_reference).length} crops, plus ${data.custom_entries.length} admin-added entries.</p>
+    <div class="card" style="max-width:560px; margin:14px 0;">
+      <h4 style="font-size:.95rem;">Add a disease entry</h4>
+      <div class="field-row">
+        <div class="field"><label for="dd-crop">Crop</label><input type="text" id="dd-crop"></div>
+        <div class="field"><label for="dd-disease">Disease name</label><input type="text" id="dd-disease"></div>
+      </div>
+      <div class="field"><label for="dd-symptoms">Symptoms (comma-separated)</label><input type="text" id="dd-symptoms"></div>
+      <div class="field"><label for="dd-cause">Cause</label><input type="text" id="dd-cause"></div>
+      <div class="field"><label for="dd-treatment">Treatment</label><input type="text" id="dd-treatment"></div>
+      <div class="field"><label for="dd-fungicide">Recommended fungicide</label><input type="text" id="dd-fungicide"></div>
+      <button class="btn btn-ghost btn-small" id="add-disease-btn" type="button">Add entry</button>
+    </div>
+    <div>${data.custom_entries.map(d => `<div class="kb-article"><h4>${d.disease}</h4><p class="hint">${d.symptoms.join(', ')}</p></div>`).join('')}</div>`;
+
+  $('add-disease-btn').addEventListener('click', async () => {
+    await fetch('/api/admin/disease-database', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        crop: $('dd-crop').value, disease: $('dd-disease').value,
+        symptoms: $('dd-symptoms').value.split(',').map(s => s.trim()).filter(Boolean),
+        cause: $('dd-cause').value, treatment: $('dd-treatment').value,
+        recommended_fungicide: $('dd-fungicide').value,
+      }),
+    });
+    renderAdminDiseaseDb();
+  });
 }
