@@ -253,7 +253,6 @@ def model_info():
 
 
 @app.route("/api/reference-data")
-@auth.login_required
 def reference_data():
     return jsonify({
         "success": True,

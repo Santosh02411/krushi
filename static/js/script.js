@@ -5,6 +5,10 @@
 // elements at once, since each feature now lives on its own page.
 
 const $ = (id) => document.getElementById(id);
+// Reads .value off an element that might not exist on every page (a
+// missing field should degrade gracefully, not throw "Cannot read
+// properties of null" and abort the whole handler).
+const val = (id) => { const el = $(id); return el ? el.value : ''; };
 let userCoords = null; // real GPS coords once granted
 let referenceData = null;
 let currentUser = null;
@@ -43,7 +47,7 @@ function initRecommendPage() {
   $('detect-btn').addEventListener('click', detectLocation);
   $('fetch-weather-btn').addEventListener('click', fetchWeatherPreview);
   $('recommend-btn').addEventListener('click', getRecommendations);
-  $('state').addEventListener('change', populateDistricts);
+  if ($('state')) $('state').addEventListener('change', populateDistricts);
 }
 
 function initSoilPage() {
@@ -211,6 +215,7 @@ function fillLangSelect(select, languages) {
 }
 
 function populateDistricts() {
+  if (!$('state')) return;
   const state = $('state').value;
   const districts = (referenceData && referenceData.districts_by_state[state]) || [];
   fillSelect($('district'), districts, 'Select district');
@@ -251,13 +256,13 @@ async function handleLogin(e) {
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: $('login-email').value, password: $('login-password').value }),
+      body: JSON.stringify({ email: val('login-email'), password: val('login-password') }),
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error);
+    if (!data.success) throw new Error(data.error || 'Login failed.');
     window.location.href = '/home';
   } catch (err) {
-    $('login-error').textContent = err.message || 'Login failed.';
+    $('login-error').textContent = err.message || 'Login failed. Please try again.';
     $('login-error').classList.add('show');
   }
 }
@@ -269,16 +274,16 @@ async function handleRegister(e) {
     const res = await fetch('/api/auth/register', {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: $('reg-name').value, email: $('reg-email').value, password: $('reg-password').value,
-        location: $('reg-location').value, farm_size_acres: parseFloat($('reg-farm-size').value) || null,
-        soil_type: $('reg-soil-type').value, preferred_language: $('reg-language').value,
+        name: val('reg-name'), email: val('reg-email'), password: val('reg-password'),
+        location: val('reg-location'), farm_size_acres: parseFloat(val('reg-farm-size')) || null,
+        soil_type: val('reg-soil-type'), preferred_language: val('reg-language') || 'en',
       }),
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error);
+    if (!data.success) throw new Error(data.error || 'Registration failed.');
     window.location.href = '/home';
   } catch (err) {
-    $('register-error').textContent = err.message || 'Registration failed.';
+    $('register-error').textContent = err.message || 'Registration failed. Please try again.';
     $('register-error').classList.add('show');
   }
 }
@@ -291,16 +296,17 @@ async function handleForgot(e) {
   try {
     const res = await fetch('/api/auth/forgot-password', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: $('forgot-email').value }),
+      body: JSON.stringify({ email: val('forgot-email') }),
     });
     const data = await res.json();
     if (data.reset_token) {
       note.textContent = `${data.message} Token: ${data.reset_token}`;
-      $('reset-email').value = $('forgot-email').value;
-      $('reset-token').value = data.reset_token;
+      if ($('reset-email')) $('reset-email').value = val('forgot-email');
+      if ($('reset-token')) $('reset-token').value = data.reset_token;
       switchAuthTab('reset');
     } else {
-      note.textContent = data.message || 'If that email has an account, a reset link has been issued.';
+      note.textContent = data.message ||
+        'No account found with that email — double check it, or register first if you haven\'t yet.';
     }
   } catch (err) {
     note.textContent = 'Could not process request.';
@@ -314,16 +320,15 @@ async function handleReset(e) {
     const res = await fetch('/api/auth/reset-password', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: $('reset-email').value, token: $('reset-token').value,
-        new_password: $('reset-new-password').value,
+        email: val('reset-email'), token: val('reset-token'), new_password: val('reset-new-password'),
       }),
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error);
+    if (!data.success) throw new Error(data.error || 'Reset failed.');
     switchAuthTab('login');
-    $('login-email').value = $('reset-email').value;
+    if ($('login-email')) $('login-email').value = val('reset-email');
   } catch (err) {
-    $('reset-error').textContent = err.message || 'Reset failed.';
+    $('reset-error').textContent = err.message || 'Reset failed. Please try again.';
     $('reset-error').classList.add('show');
   }
 }
