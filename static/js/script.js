@@ -593,6 +593,8 @@ function buildCropCard(rec, rank, isHero) {
       <span class="badge ${demandClass}">${rec.market_demand} demand</span>
       ${rec.season_match === true ? '<span class="badge season">✓ matches your season</span>' : ''}
       ${rec.season_match === false ? '<span class="badge demand-low">off-season</span>' : ''}
+      ${rec.regionally_grown === true ? '<span class="badge season">✓ grown in your state (real records)</span>' : ''}
+      ${rec.regionally_grown === false ? '<span class="badge demand-medium">no production record found for your state</span>' : ''}
     </div>
 
     ${rec.advice && rec.advice.length ? `<ul class="advice-list">${rec.advice.map(a => `<li>${a}</li>`).join('')}</ul>` : ''}

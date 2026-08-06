@@ -23,6 +23,7 @@ from market_service import MarketService
 from ml_models import CropRecommendationModel, WaterManagementAdvisor
 from notifications import build_notifications
 from profit_estimation import estimate_profit
+from regional_crops import is_grown_in_state
 from soil_health import analyze_soil
 from weather_service import WeatherService
 from yield_model import YieldModel
@@ -340,10 +341,21 @@ def forgot_password():
         # Don't reveal whether the email exists -- standard practice.
         return jsonify({"success": True, "message": "If that email has an account, a reset link has been issued."})
 
+    reset_link = f"{request.url_root.rstrip('/')}/login?reset_token={token}"
+    sent = auth.send_email(
+        user["email"], "Reset your Krushi password",
+        f"Hi {user['name']},\n\nUse this token to reset your Krushi password (expires in "
+        f"{auth.RESET_TOKEN_TTL_MINUTES} minutes): {token}\n\nOr open: {reset_link}\n\n"
+        f"If you didn't request this, you can ignore this email.",
+    )
+
+    if sent:
+        return jsonify({"success": True, "message": "A password reset email has been sent to your address."})
+
     return jsonify({
         "success": True,
-        "message": "No email service is configured in this dev setup, so here is the reset token directly "
-                    "(in production this would be emailed, never shown in the API response).",
+        "message": "No email service is configured (SMTP_* vars empty in .env), so here is the reset token "
+                    "directly instead of emailing it.",
         "reset_token": token,
         "expires_in_minutes": auth.RESET_TOKEN_TTL_MINUTES,
     })
@@ -559,9 +571,18 @@ def recommend_crops():
             rainfall = rainfall if rainfall is not None else weather_data.get("rainfall", 100)
 
         rainfall_mm = float(rainfall) if float(rainfall) > 5 else float(rainfall) * 30
+
+        # The crop model itself has NO location input — it's trained purely
+        # on N/P/K/temperature/humidity/pH/rainfall (see ml_models.py), so
+        # two farmers in different states with the same soil numbers would
+        # otherwise get an identical list regardless of state. When a state
+        # is given, pull more candidates than we need and re-rank using
+        # real historical state-level crop production records
+        # (regional_crops.py), instead of leaving state purely decorative.
+        fetch_n = 12 if state else 6
         recommendations = crop_model.recommend_crops(
             n=n, p=p, k=k, temperature=float(temperature), humidity=float(humidity),
-            ph=ph, rainfall=rainfall_mm,
+            ph=ph, rainfall=rainfall_mm, top_n=fetch_n,
         )
 
         for rec in recommendations:
@@ -572,6 +593,19 @@ def recommend_crops():
                 season is not None and season.strip().lower() in rec.get("season", "").lower()
             ) if season else None
             rec["market_estimate"] = market_service.get_price_estimate(rec["crop"], state=state)
+            rec["regionally_grown"] = is_grown_in_state(rec["crop"], state) if state else None
+
+        if state:
+            # Only a CONFIRMED real match (True) gets bubbled up. None and
+            # False are deliberately tied at the same tier and keep their
+            # original model-confidence order — the data has real gaps
+            # (e.g. Rajasthan is entirely absent from this dataset), so
+            # treating "no record" as equivalent to "actively worse" would
+            # bury good, high-confidence picks under a data-completeness
+            # artifact rather than a real regional signal.
+            tier = {True: 0, None: 1, False: 1}
+            recommendations.sort(key=lambda r: tier[r["regionally_grown"]])
+        recommendations = recommendations[:6]
 
         recommendations = _add_profitability(recommendations)
 

@@ -74,6 +74,8 @@ Everything auto-fills from your real GPS location where possible.
 | Crop recommendation | [Crop Recommendation Dataset](https://raw.githubusercontent.com/Gladiator07/Harvestify/master/Data-processed/crop_recommendation.csv) — 2,200 real samples, 22 crops. | **Real.** `RandomForestClassifier`, held-out test accuracy shown live. |
 | Expected yield | Real Indian government crop-production data, 1997-2020, all states (`data/crop_yield_data.csv`, 19,689 records). | **Real, covers 11 of 22 crops** (rice, maize, chickpea, pigeonpeas, mothbeans, mungbean, blackgram, lentil, banana, cotton, jute). `RandomForestRegressor`, held-out R²=0.93. Other crops return an explicit "not covered" message. |
 | Location | Browser GPS → reverse geocoding. | **Real, accurate.** IP-based lookup is kept only as a fallback, with an explicit accuracy warning. |
+| Crop recommendation regional relevance | Real Indian government crop-production records (`data/crop_yield_data.csv`) — the same data behind the yield model — checked per state for 11 crops. | **Real, but the ML model itself has no location input at all** (it's trained purely on N/P/K/temperature/humidity/pH/rainfall). Selecting a state re-ranks results using real historical "is this crop actually grown there" records, but never demotes a crop below others just because a record is missing — some states (e.g. Rajasthan) are entirely absent from this dataset, which is a data-completeness gap, not evidence the crop isn't grown there. See regional_crops.py. |
+| Password reset email | Real SMTP send if `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD` are set in `.env` (e.g. a Gmail App Password). | **Real once configured.** Without SMTP credentials, the token is returned directly in the API response instead — clearly labeled as the dev-mode fallback, not a silent failure. |
 | Weather (current, 7-day forecast, UV index) | [Open-Meteo](https://open-meteo.com), by exact GPS coordinates when available. | **Real, live**, no API key required. |
 | Rain alerts / heatwave warnings | Rule-based thresholds applied to the real forecast above. | **Real, transparent logic.** |
 | Soil health score / fertilizer guidance | India's Soil Health Card classification bands (published standard, not ML). | **Real reference ranges**, general guidance — not a substitute for a lab test. |
@@ -163,6 +165,7 @@ crops (e.g. rice, maize) would directly fix this.
    someone with direct access to the server:
    ```bash
    python scripts/create_admin.py you@example.com "Your Name" yourpassword
+   
    ```
 
 The first startup takes several seconds while all three ML models train on
@@ -291,12 +294,13 @@ live weather for the location is fetched and used.
 
 ## On the forgot-password flow
 
-This dev setup has no email service configured. Rather than pretending to
-"send an email" (which would silently do nothing), `/api/auth/forgot-password`
-returns the real reset token directly in its response, clearly labeled as
-a dev-mode stand-in. To make this production-ready, wire a real provider
-(SMTP, SendGrid, etc.) into `auth.create_password_reset()` in `auth.py` and
-stop returning the token in the response.
+`/api/auth/forgot-password` now sends a **real email** via SMTP if you've
+set `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASSWORD` in `.env` (see
+`.env.example` for Gmail App Password setup instructions — a normal Gmail
+password won't work, it needs an App Password). Without those set, it
+falls back to returning the reset token directly in the API response,
+clearly labeled as the dev-mode stand-in rather than silently doing
+nothing. See `auth.send_email()` in `auth.py`.
 
 ## On admin accounts
 

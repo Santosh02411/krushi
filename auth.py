@@ -15,8 +15,10 @@ replace that step in production.
 
 import os
 import secrets
+import smtplib
 import sqlite3
 from datetime import datetime, timedelta
+from email.mime.text import MIMEText
 from functools import wraps
 
 from flask import g, jsonify, redirect, request, session, url_for
@@ -24,6 +26,38 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "krushi.db")
 RESET_TOKEN_TTL_MINUTES = 30
+
+
+def send_email(to_email, subject, body):
+    """Sends a real email via SMTP if credentials are configured in .env
+    (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM). Returns True
+    if a real send was attempted successfully, False otherwise — callers
+    use this to decide whether to also return the token/link directly in
+    the API response (only when email genuinely isn't configured, so the
+    dev flow still works without SMTP)."""
+    host = os.getenv("SMTP_HOST")
+    port = os.getenv("SMTP_PORT")
+    user = os.getenv("SMTP_USER")
+    password = os.getenv("SMTP_PASSWORD")
+    from_addr = os.getenv("SMTP_FROM", user)
+
+    if not all([host, port, user, password]):
+        return False
+
+    try:
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = from_addr
+        msg["To"] = to_email
+
+        with smtplib.SMTP(host, int(port), timeout=10) as server:
+            server.starttls()
+            server.login(user, password)
+            server.sendmail(from_addr, [to_email], msg.as_string())
+        return True
+    except Exception as e:
+        print(f"[auth] SMTP send failed, falling back to in-response token: {e}")
+        return False
 
 
 def get_db():
