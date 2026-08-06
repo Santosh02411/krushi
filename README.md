@@ -165,7 +165,6 @@ crops (e.g. rice, maize) would directly fix this.
    someone with direct access to the server:
    ```bash
    python scripts/create_admin.py you@example.com "Your Name" yourpassword
-   
    ```
 
 The first startup takes several seconds while all three ML models train on

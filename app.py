@@ -7,6 +7,7 @@ from datetime import date, datetime
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
+from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 import auth
@@ -330,6 +331,19 @@ def update_profile():
     )
     user = auth.get_user_by_id(session["user_id"])
     return jsonify({"success": True, "user": auth.public_user_dict(user)})
+
+
+@app.route("/api/auth/delete-account", methods=["POST"])
+@auth.login_required
+def delete_account():
+    data = request.json or {}
+    user = auth.get_user_by_id(session["user_id"])
+    if not check_password_hash(user["password_hash"], data.get("password", "")):
+        return jsonify({"success": False, "error": "Incorrect password."}), 401
+
+    auth.delete_user(user["id"])
+    auth.logout_user_session()
+    return jsonify({"success": True})
 
 
 @app.route("/api/auth/forgot-password", methods=["POST"])

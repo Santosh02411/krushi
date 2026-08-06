@@ -148,6 +148,30 @@ def update_profile(user_id, **fields):
     return True
 
 
+# Every table that stores a row per-user, deleted alongside the account so
+# "delete account" actually removes the person's real data rather than
+# leaving orphaned rows behind under a dangling user_id.
+_USER_DATA_TABLES = [
+    "expenses", "income", "soil_health_logs", "water_usage_logs", "yield_logs",
+    "crop_plans", "disease_checks", "fertilizer_usage_logs", "password_resets",
+]
+
+
+def delete_user(user_id):
+    """Permanently deletes the account and every real record tied to it.
+    Recommendations logged to the shared `recommendations` table are kept
+    but anonymized (user_id set to NULL) rather than deleted, since that
+    table also backs aggregate app-wide stats (e.g. the admin dashboard's
+    'recommendations generated' count) that shouldn't silently drop."""
+    conn = get_db()
+    for table in _USER_DATA_TABLES:
+        conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+    conn.execute("UPDATE recommendations SET user_id = NULL WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+
 def create_password_reset(email):
     """Returns (token, user) if the email exists, else (None, None). The
     raw token is only ever returned here / to the caller — the DB stores
