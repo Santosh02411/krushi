@@ -46,7 +46,7 @@ water_advisor = WaterManagementAdvisor()
 weather_service = WeatherService(os.getenv("OPENWEATHER_API_KEY"))
 market_service = MarketService(os.getenv("MARKET_API_KEY"))
 location_service = LocationService()
-chat_service = ChatService(os.getenv("ANTHROPIC_API_KEY"), os.getenv("CHAT_MODEL"))
+chat_service = ChatService(os.getenv("GEMINI_API_KEY"), os.getenv("CHAT_MODEL"))
 
 with open(os.path.join(BASE_DIR, "data", "states_districts.json"), encoding="utf-8") as f:
     STATES_DISTRICTS = json.load(f)
@@ -295,7 +295,11 @@ def register():
 
     user = auth.get_user_by_id(result["user_id"])
     auth.login_user_session(user)
-    return jsonify({"success": True, "user": auth.public_user_dict(user)})
+    email_result = auth.send_welcome_email(user)
+    return jsonify({
+        "success": True, "user": auth.public_user_dict(user),
+        "welcome_email_sent": email_result["sent"],
+    })
 
 
 @app.route("/api/auth/login", methods=["POST"])
@@ -350,29 +354,48 @@ def delete_account():
 def forgot_password():
     data = request.json or {}
     email = data.get("email", "")
-    token, user = auth.create_password_reset(email)
-    if not token:
+    code, user = auth.create_password_reset(email)
+    if not code:
         # Don't reveal whether the email exists -- standard practice.
-        return jsonify({"success": True, "message": "If that email has an account, a reset link has been issued."})
+        return jsonify({"success": True, "message": "If that email has an account, a code has been sent to it."})
 
-    reset_link = f"{request.url_root.rstrip('/')}/login?reset_token={token}"
-    sent = auth.send_email(
-        user["email"], "Reset your Krushi password",
-        f"Hi {user['name']},\n\nUse this token to reset your Krushi password (expires in "
-        f"{auth.RESET_TOKEN_TTL_MINUTES} minutes): {token}\n\nOr open: {reset_link}\n\n"
-        f"If you didn't request this, you can ignore this email.",
+    result = auth.send_email(
+        user["email"], "Your Krushi password reset code",
+        f"Hi {user['name']},\n\nYour Krushi password reset code is: {code}\n\n"
+        f"This code expires in {auth.RESET_TOKEN_TTL_MINUTES} minutes and can only be used once.\n\n"
+        f"If you didn't request this, you can ignore this email — your password won't change.",
     )
 
-    if sent:
-        return jsonify({"success": True, "message": "A password reset email has been sent to your address."})
+    if result["sent"]:
+        return jsonify({"success": True, "email_sent": True,
+                         "message": f"A 6-digit code has been sent to {user['email']}. Enter it below."})
+
+    if result["reason"] == "error":
+        # SMTP IS configured but the send itself failed — tell the truth
+        # about that instead of pretending it worked, and still hand back
+        # the code so the person isn't stuck.
+        return jsonify({
+            "success": True, "email_sent": False,
+            "message": f"Email sending failed ({result['detail']}) — here is the code directly instead.",
+            "reset_token": code, "expires_in_minutes": auth.RESET_TOKEN_TTL_MINUTES,
+        })
 
     return jsonify({
-        "success": True,
-        "message": "No email service is configured (SMTP_* vars empty in .env), so here is the reset token "
-                    "directly instead of emailing it.",
-        "reset_token": token,
+        "success": True, "email_sent": False,
+        "message": "No email service is configured (SMTP_* vars empty in .env), so here is the code "
+                    "directly instead of emailing it. Set up SMTP in .env to send it for real.",
+        "reset_token": code,
         "expires_in_minutes": auth.RESET_TOKEN_TTL_MINUTES,
     })
+
+
+@app.route("/api/auth/verify-reset-code", methods=["POST"])
+def verify_reset_code():
+    data = request.json or {}
+    ok, error = auth.verify_reset_code(data.get("email", ""), data.get("token", ""))
+    if not ok:
+        return jsonify({"success": False, "error": error}), 400
+    return jsonify({"success": True})
 
 
 @app.route("/api/auth/reset-password", methods=["POST"])
