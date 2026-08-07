@@ -79,14 +79,16 @@ code { font-family: var(--mono); background: var(--surface-2); padding: 2px 6px;
 
 /* ------------------------------- nav ------------------------------- */
 .nav { position: sticky; top: 0; z-index: 60; background: rgba(255,255,255,.82); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); border-bottom: 1px solid var(--line); }
-.nav .container { display: flex; align-items: center; justify-content: space-between; height: 66px; gap: 20px; }
-.logo { display: flex; align-items: center; gap: 9px; font-family: var(--display); font-size: 1.25rem; font-weight: 800; color: var(--ink); text-decoration: none; letter-spacing: -.02em; }
+.nav .container { display: flex; align-items: center; height: 66px; gap: 24px; }
+.logo { display: flex; align-items: center; gap: 9px; font-family: var(--display); font-size: 1.25rem; font-weight: 800; color: var(--ink); text-decoration: none; letter-spacing: -.02em; flex-shrink: 0; }
 .logo .mark { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); box-shadow: 0 2px 8px -2px rgba(22,163,74,.5); }
-.nav-links { display: flex; gap: 4px; font-size: .86rem; overflow-x: auto; max-width: 58vw; scrollbar-width: none; }
-.nav-links::-webkit-scrollbar { display: none; }
-.nav-links a { text-decoration: none; color: var(--ink-soft); transition: color .15s, background .15s; white-space: nowrap; padding: 8px 12px; border-radius: 999px; font-weight: 500; }
-.nav-links a:hover { color: var(--ink); background: var(--surface-2); }
-.nav-links a.active { color: var(--primary-dark); background: var(--primary-soft); font-weight: 600; }
+.nav-center { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.nav-links-primary { display: flex; gap: 2px; font-size: .86rem; overflow-x: auto; scrollbar-width: none; }
+.nav-links-primary::-webkit-scrollbar { display: none; }
+.nav-links-primary a { text-decoration: none; color: var(--ink-soft); transition: color .15s, background .15s; white-space: nowrap; padding: 8px 12px; border-radius: 999px; font-weight: 500; }
+.nav-links-primary a:hover { color: var(--ink); background: var(--surface-2); }
+.nav-links-primary a.active { color: var(--primary-dark); background: var(--primary-soft); font-weight: 600; }
+.nav-right { display: flex; align-items: center; gap: 12px; margin-left: auto; flex-shrink: 0; }
 .nav-badge { font-family: var(--mono); font-size: .72rem; padding: 5px 11px; border: 1px solid var(--primary-line); border-radius: 999px; color: var(--primary-dark); background: var(--primary-soft); white-space: nowrap; font-weight: 600; }
 
 /* ------------------------------- buttons ------------------------------- */
@@ -272,12 +274,18 @@ footer .disclaimer { max-width: 44ch; opacity: .68; font-size: .8rem; }
 .auth-form { display: none; }
 .auth-form.active { display: block; }
 .auth-form .field { margin-bottom: 12px; }
+.password-field { position: relative; }
+.password-field input { padding-right: 42px; }
+.password-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px 8px; color: var(--ink-faint); opacity: .7; }
+.password-eye:hover { opacity: 1; }
 .nav-user { display: flex; align-items: center; gap: 10px; font-size: .86rem; color: var(--ink); }
 .nav-user .role-badge { font-family: var(--mono); font-size: .68rem; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); }
 #account-panel { display: none; }
 #account-panel.show { display: block; }
 .profile-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 @media (max-width: 700px) { .profile-grid { grid-template-columns: 1fr; } }
+.profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.profile-avatar { width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; font-family: var(--display); font-weight: 800; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
 /* ========================= hero recommendation display ================ */
 .hero-crop-card { border: 1.5px solid var(--primary-line); box-shadow: 0 0 0 4px var(--primary-soft); }
