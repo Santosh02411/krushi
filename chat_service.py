@@ -1,10 +1,15 @@
 """
 chat_service.py
 ------------------
-A real chatbot backed by the Anthropic API — not a scripted/fake response
-generator. Requires ANTHROPIC_API_KEY in .env (get one at
-https://console.anthropic.com). If no key is configured, the endpoint says
-so plainly instead of returning a canned response pretending to be an LLM.
+A real chatbot backed by the Google Gemini API — not a scripted/fake
+response generator. Requires GEMINI_API_KEY in .env (get a free key at
+https://aistudio.google.com/apikey — no credit card required to start).
+Gemini's free tier has generous per-minute/per-day request limits, not a
+literal unlimited quota — if you hit them, the API returns a 429 and the
+chat page will say so honestly rather than hanging or faking a reply.
+
+If no key is configured, the endpoint says so plainly instead of
+returning a canned response pretending to be an LLM.
 
 The system prompt gives the model real context this app already has
 (recognized crops, disease-reference coverage, etc.) so answers are
@@ -16,8 +21,8 @@ import os
 
 import requests
 
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-DEFAULT_MODEL = "claude-sonnet-5"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+DEFAULT_MODEL = "gemini-2.0-flash"
 
 SYSTEM_PROMPT = """You are the in-app farming assistant for Krushi, an Indian agriculture advisory \
 tool. Answer farming questions (crop choice, fertilizer, pest/disease symptoms, irrigation, \
@@ -47,33 +52,38 @@ class ChatService:
         if not self.api_key:
             return {
                 "success": False,
-                "error": "Chatbot isn't configured — add ANTHROPIC_API_KEY to .env (get a free key "
-                         "at https://console.anthropic.com) to enable it.",
+                "error": "Chatbot isn't configured — add GEMINI_API_KEY to .env (get a free key at "
+                         "https://aistudio.google.com/apikey) to enable it.",
             }
 
-        messages = []
+        contents = []
         for turn in (history or [])[-10:]:  # keep recent context bounded
-            role = "user" if turn.get("role") == "user" else "assistant"
-            messages.append({"role": role, "content": turn.get("content", "")})
-        messages.append({"role": "user", "content": message})
+            role = "user" if turn.get("role") == "user" else "model"
+            contents.append({"role": role, "parts": [{"text": turn.get("content", "")}]})
+        contents.append({"role": "user", "parts": [{"text": message}]})
 
         try:
             resp = requests.post(
-                ANTHROPIC_API_URL,
-                headers={
-                    "x-api-key": self.api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
-                },
+                GEMINI_API_URL.format(model=self.model),
+                params={"key": self.api_key},
+                headers={"content-type": "application/json"},
                 json={
-                    "model": self.model, "max_tokens": 600,
-                    "system": SYSTEM_PROMPT, "messages": messages,
+                    "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                    "contents": contents,
+                    "generationConfig": {"maxOutputTokens": 600},
                 },
                 timeout=30,
             )
             resp.raise_for_status()
             data = resp.json()
-            text = "".join(block.get("text", "") for block in data.get("content", []) if block.get("type") == "text")
+            candidates = data.get("candidates", [])
+            if not candidates:
+                block_reason = data.get("promptFeedback", {}).get("blockReason")
+                if block_reason:
+                    return {"success": False, "error": f"Gemini declined to answer ({block_reason})."}
+                return {"success": False, "error": "Gemini returned no response."}
+            parts = candidates[0].get("content", {}).get("parts", [])
+            text = "".join(p.get("text", "") for p in parts)
             return {"success": True, "reply": text.strip() or "(empty response)"}
         except requests.exceptions.HTTPError as e:
             detail = ""
@@ -81,6 +91,8 @@ class ChatService:
                 detail = resp.json().get("error", {}).get("message", "")
             except Exception:
                 pass
+            if resp.status_code == 429:
+                return {"success": False, "error": "Gemini rate limit hit — wait a moment and try again."}
             return {"success": False, "error": f"Chatbot API error: {detail or str(e)}"}
         except Exception as e:
             return {"success": False, "error": f"Chatbot request failed: {e}"}
