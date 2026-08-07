@@ -30,19 +30,21 @@ RESET_TOKEN_TTL_MINUTES = 30
 
 def send_email(to_email, subject, body):
     """Sends a real email via SMTP if credentials are configured in .env
-    (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_FROM). Returns True
-    if a real send was attempted successfully, False otherwise — callers
-    use this to decide whether to also return the token/link directly in
-    the API response (only when email genuinely isn't configured, so the
-    dev flow still works without SMTP)."""
+    (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD). Returns a dict:
+      {"sent": True} on a real successful send
+      {"sent": False, "reason": "not_configured"} if SMTP_* isn't set
+      {"sent": False, "reason": "error", "detail": "..."} if SMTP is set
+        but the send itself failed (bad credentials, blocked port, etc.)
+    Callers use "reason" to decide what to tell the user — a real send
+    failure is a different, more actionable message than "not configured"."""
     host = os.getenv("SMTP_HOST")
     port = os.getenv("SMTP_PORT")
     user = os.getenv("SMTP_USER")
     password = os.getenv("SMTP_PASSWORD")
-    from_addr = os.getenv("SMTP_FROM", user)
+    from_addr = os.getenv("SMTP_FROM") or user
 
     if not all([host, port, user, password]):
-        return False
+        return {"sent": False, "reason": "not_configured"}
 
     try:
         msg = MIMEText(body)
@@ -50,14 +52,24 @@ def send_email(to_email, subject, body):
         msg["From"] = from_addr
         msg["To"] = to_email
 
-        with smtplib.SMTP(host, int(port), timeout=10) as server:
+        with smtplib.SMTP(host, int(port), timeout=15) as server:
             server.starttls()
             server.login(user, password)
             server.sendmail(from_addr, [to_email], msg.as_string())
-        return True
+        return {"sent": True}
     except Exception as e:
-        print(f"[auth] SMTP send failed, falling back to in-response token: {e}")
-        return False
+        print(f"[auth] SMTP send failed: {e}")
+        return {"sent": False, "reason": "error", "detail": str(e)}
+
+
+def send_welcome_email(user):
+    return send_email(
+        user["email"], "Welcome to Krushi 🌱",
+        f"Hi {user['name']},\n\n"
+        f"Congratulations — your Krushi account has been created successfully!\n\n"
+        f"You can now sign in and use the crop advisor, soil health check, market prices, "
+        f"irrigation planner, and the rest of the tools.\n\n— Krushi",
+    )
 
 
 def get_db():
@@ -173,24 +185,53 @@ def delete_user(user_id):
 
 
 def create_password_reset(email):
-    """Returns (token, user) if the email exists, else (None, None). The
-    raw token is only ever returned here / to the caller — the DB stores
-    only its hash, same principle as a password."""
+    """Returns (code, user) if the email exists, else (None, None). The
+    raw 6-digit code is only ever returned here / to the caller — the DB
+    stores only its hash, same principle as a password."""
     conn = get_db()
     row = conn.execute("SELECT * FROM users WHERE email = ?", (email.strip().lower(),)).fetchone()
     if not row:
         conn.close()
         return None, None
 
-    token = secrets.token_urlsafe(32)
+    code = "".join(secrets.choice("0123456789") for _ in range(6))
     expires_at = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_TTL_MINUTES)
     conn.execute(
         "INSERT INTO password_resets (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
-        (row["id"], generate_password_hash(token), expires_at.isoformat()),
+        (row["id"], generate_password_hash(code), expires_at.isoformat()),
     )
     conn.commit()
     conn.close()
-    return token, dict(row)
+    return code, dict(row)
+
+
+def _find_valid_reset(conn, user_id, code):
+    """Shared lookup used by both verify (read-only) and reset (consuming).
+    Returns the matching, unexpired, unused password_resets row, or None."""
+    resets = conn.execute(
+        "SELECT * FROM password_resets WHERE user_id = ? AND used = 0 ORDER BY id DESC",
+        (user_id,),
+    ).fetchall()
+    for r in resets:
+        if check_password_hash(r["token_hash"], code) and datetime.fromisoformat(r["expires_at"]) >= datetime.utcnow():
+            return r
+    return None
+
+
+def verify_reset_code(email, code):
+    """Checks whether a code is valid WITHOUT consuming it — lets the UI
+    confirm the code before showing the new-password fields, matching a
+    real OTP flow (verify first, only then allow setting a new password)."""
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE email = ?", (email.strip().lower(),)).fetchone()
+    if not user:
+        conn.close()
+        return False, "No account with this email."
+    matched = _find_valid_reset(conn, user["id"], code)
+    conn.close()
+    if not matched:
+        return False, "Incorrect or expired code."
+    return True, None
 
 
 def reset_password(email, token, new_password):
@@ -200,23 +241,10 @@ def reset_password(email, token, new_password):
         conn.close()
         return False, "No account with this email."
 
-    resets = conn.execute(
-        "SELECT * FROM password_resets WHERE user_id = ? AND used = 0 ORDER BY id DESC",
-        (user["id"],),
-    ).fetchall()
-
-    matched = None
-    for r in resets:
-        if check_password_hash(r["token_hash"], token):
-            matched = r
-            break
-
+    matched = _find_valid_reset(conn, user["id"], token)
     if not matched:
         conn.close()
-        return False, "Invalid or already-used reset token."
-    if datetime.fromisoformat(matched["expires_at"]) < datetime.utcnow():
-        conn.close()
-        return False, "This reset token has expired — request a new one."
+        return False, "Incorrect or expired code."
 
     conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
                  (generate_password_hash(new_password), user["id"]))
