@@ -29,7 +29,13 @@
 
         <form class="auth-form active" id="login-form">
           <div class="field"><label for="login-email">Email</label><input type="text" id="login-email" required></div>
-          <div class="field"><label for="login-password">Password</label><input type="password" id="login-password" required></div>
+          <div class="field">
+            <label for="login-password">Password</label>
+            <div class="password-field">
+              <input type="password" id="login-password" required>
+              <button type="button" class="password-eye" data-target="login-password">👁</button>
+            </div>
+          </div>
           <button class="btn btn-primary" type="submit">Login</button>
           <div class="error-note" id="login-error"></div>
         </form>
@@ -39,7 +45,22 @@
             <div class="field"><label for="reg-name">Name</label><input type="text" id="reg-name" required></div>
             <div class="field"><label for="reg-email">Email</label><input type="text" id="reg-email" required></div>
           </div>
-          <div class="field"><label for="reg-password">Password (min. 8 characters)</label><input type="password" id="reg-password" required></div>
+          <div class="field-row">
+            <div class="field">
+              <label for="reg-password">Password (min. 8 characters)</label>
+              <div class="password-field">
+                <input type="password" id="reg-password" required minlength="8">
+                <button type="button" class="password-eye" data-target="reg-password">👁</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="reg-password-confirm">Confirm password</label>
+              <div class="password-field">
+                <input type="password" id="reg-password-confirm" required minlength="8">
+                <button type="button" class="password-eye" data-target="reg-password-confirm">👁</button>
+              </div>
+            </div>
+          </div>
           <div class="field-row">
             <div class="field"><label for="reg-location">Location</label><input type="text" id="reg-location" placeholder="e.g. Nidasoshi, Karnataka"></div>
             <div class="field"><label for="reg-farm-size">Farm size (acres)</label><input type="number" id="reg-farm-size" step="0.1"></div>
@@ -52,16 +73,41 @@
           <div class="error-note" id="register-error"></div>
         </form>
 
+        <!-- Forgot password: 3 explicit steps — request code, verify code,
+             only then set a new password. The code is emailed for real if
+             SMTP is configured (see .env.example); otherwise it's shown
+             inline, clearly labeled as the dev-only fallback. -->
         <form class="auth-form" id="forgot-form">
+          <p class="hint" style="margin-bottom:12px;">Step 1 of 3 — enter your account email and we'll send a 6-digit code to it.</p>
           <div class="field"><label for="forgot-email">Email</label><input type="text" id="forgot-email" required></div>
-          <button class="btn btn-primary" type="submit">Send reset token</button>
+          <button class="btn btn-primary" type="submit">Send code</button>
           <div class="loading-note show" id="forgot-note" style="display:none;"></div>
         </form>
 
+        <form class="auth-form" id="verify-form">
+          <p class="hint" style="margin-bottom:12px;">Step 2 of 3 — enter the 6-digit code sent to your email.</p>
+          <div class="field"><label for="verify-code">6-digit code</label>
+            <input type="text" id="verify-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required></div>
+          <button class="btn btn-primary" type="submit">Verify code</button>
+          <div class="error-note" id="verify-error"></div>
+        </form>
+
         <form class="auth-form" id="reset-form">
-          <div class="field"><label for="reset-email">Email</label><input type="text" id="reset-email" required></div>
-          <div class="field"><label for="reset-token">Reset token</label><input type="text" id="reset-token" required></div>
-          <div class="field"><label for="reset-new-password">New password</label><input type="password" id="reset-new-password" required></div>
+          <p class="hint" style="margin-bottom:12px;">Step 3 of 3 — code verified, set your new password.</p>
+          <div class="field">
+            <label for="reset-new-password">New password</label>
+            <div class="password-field">
+              <input type="password" id="reset-new-password" required minlength="8">
+              <button type="button" class="password-eye" data-target="reset-new-password">👁</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="reset-new-password-confirm">Confirm new password</label>
+            <div class="password-field">
+              <input type="password" id="reset-new-password-confirm" required minlength="8">
+              <button type="button" class="password-eye" data-target="reset-new-password-confirm">👁</button>
+            </div>
+          </div>
           <button class="btn btn-primary" type="submit">Reset password</button>
           <div class="error-note" id="reset-error"></div>
         </form>
@@ -69,10 +115,12 @@
 
       <div class="card how-card">
         <h3 style="font-size:1.05rem;">About the forgot-password flow</h3>
-        <p class="hint">This dev setup has no email service configured, so "forgot password" returns
-          the reset token directly in the response instead of pretending to email it — you'll see it
-          appear below the form so you can paste it into the reset form. In production this step
-          would be replaced with a real mail provider.</p>
+        <p class="hint">If you've set <code>SMTP_HOST</code>/<code>SMTP_USER</code>/<code>SMTP_PASSWORD</code>
+          in <code>.env</code>, the 6-digit code is emailed to your real address, and you must enter
+          the matching code before you're allowed to set a new password. Without SMTP configured,
+          there's no way to actually deliver an email, so the code is shown inline instead — clearly
+          labeled as the dev-only fallback, not a substitute for real email. See <code>.env.example</code>
+          for Gmail App Password setup.</p>
       </div>
     </div>
   </div>
