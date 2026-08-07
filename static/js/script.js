@@ -24,14 +24,27 @@ function initLoginPage() {
   $('login-form').addEventListener('submit', handleLogin);
   $('register-form').addEventListener('submit', handleRegister);
   $('forgot-form').addEventListener('submit', handleForgot);
+  $('verify-form').addEventListener('submit', handleVerifyCode);
   $('reset-form').addEventListener('submit', handleReset);
+  initPasswordEyeToggles();
+}
+
+function initPasswordEyeToggles() {
+  document.querySelectorAll('.password-eye').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = $(btn.dataset.target);
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      btn.textContent = showing ? '👁' : '🙈';
+    });
+  });
 }
 
 function initProfilePage() {
   loadReferenceData();
   checkSession();
   $('save-profile-btn').addEventListener('click', saveProfile);
-  $('logout-btn').addEventListener('click', handleLogout);
   if ($('admin-panel')) loadAdminUsers();
 }
 
@@ -225,10 +238,12 @@ function populateDistricts() {
 // Auth
 // ---------------------------------------------------------------------- //
 function switchAuthTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  const tabForHighlight = (tab === 'verify' || tab === 'reset') ? 'forgot' : tab;
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabForHighlight));
   document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-  const map = { login: 'login-form', register: 'register-form', forgot: 'forgot-form' };
-  ($(map[tab]) || $('reset-form')).classList.add('active');
+  const map = { login: 'login-form', register: 'register-form', forgot: 'forgot-form',
+                verify: 'verify-form', reset: 'reset-form' };
+  ($(map[tab]) || $('login-form')).classList.add('active');
 }
 
 async function checkSession() {
@@ -243,6 +258,7 @@ function applyLoggedInState(user) {
   currentUser = user;
   if ($('profile-name')) $('profile-name').textContent = user.name;
   if ($('profile-role')) $('profile-role').textContent = user.role;
+  if ($('profile-avatar-big')) $('profile-avatar-big').textContent = (user.name || '?').charAt(0).toUpperCase();
   if ($('profile-location')) $('profile-location').value = user.location || '';
   if ($('profile-farm-size')) $('profile-farm-size').value = user.farm_size_acres || '';
   if ($('profile-soil-type')) $('profile-soil-type').value = user.soil_type || '';
@@ -270,6 +286,13 @@ async function handleLogin(e) {
 async function handleRegister(e) {
   e.preventDefault();
   $('register-error').classList.remove('show');
+
+  if (val('reg-password') !== val('reg-password-confirm')) {
+    $('register-error').textContent = 'Passwords do not match.';
+    $('register-error').classList.add('show');
+    return;
+  }
+
   try {
     const res = await fetch('/api/auth/register', {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
@@ -288,6 +311,8 @@ async function handleRegister(e) {
   }
 }
 
+let resetFlowEmail = ''; // carried between the forgot -> verify -> reset steps
+
 async function handleForgot(e) {
   e.preventDefault();
   const note = $('forgot-note');
@@ -299,11 +324,17 @@ async function handleForgot(e) {
       body: JSON.stringify({ email: val('forgot-email') }),
     });
     const data = await res.json();
-    if (data.reset_token) {
-      note.textContent = `${data.message} Token: ${data.reset_token}`;
-      if ($('reset-email')) $('reset-email').value = val('forgot-email');
-      if ($('reset-token')) $('reset-token').value = data.reset_token;
-      switchAuthTab('reset');
+    resetFlowEmail = val('forgot-email');
+
+    if (data.email_sent) {
+      switchAuthTab('verify');
+    } else if (data.reset_token) {
+      // Dev-only fallback (no SMTP configured) — pre-fill the code so the
+      // flow still works for local testing, but it's the same verify step
+      // either way, not a shortcut around it.
+      $('verify-code').value = data.reset_token;
+      switchAuthTab('verify');
+      note.style.display = 'none';
     } else {
       note.textContent = data.message ||
         'No account found with that email — double check it, or register first if you haven\'t yet.';
@@ -313,20 +344,44 @@ async function handleForgot(e) {
   }
 }
 
+async function handleVerifyCode(e) {
+  e.preventDefault();
+  $('verify-error').classList.remove('show');
+  try {
+    const res = await fetch('/api/auth/verify-reset-code', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetFlowEmail, token: val('verify-code') }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Incorrect or expired code.');
+    switchAuthTab('reset');
+  } catch (err) {
+    $('verify-error').textContent = err.message;
+    $('verify-error').classList.add('show');
+  }
+}
+
 async function handleReset(e) {
   e.preventDefault();
   $('reset-error').classList.remove('show');
+
+  const pw = val('reset-new-password');
+  const pwConfirm = val('reset-new-password-confirm');
+  if (pw !== pwConfirm) {
+    $('reset-error').textContent = 'Passwords do not match.';
+    $('reset-error').classList.add('show');
+    return;
+  }
+
   try {
     const res = await fetch('/api/auth/reset-password', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: val('reset-email'), token: val('reset-token'), new_password: val('reset-new-password'),
-      }),
+      body: JSON.stringify({ email: resetFlowEmail, token: val('verify-code'), new_password: pw }),
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Reset failed.');
     switchAuthTab('login');
-    if ($('login-email')) $('login-email').value = val('reset-email');
+    if ($('login-email')) $('login-email').value = resetFlowEmail;
   } catch (err) {
     $('reset-error').textContent = err.message || 'Reset failed. Please try again.';
     $('reset-error').classList.add('show');
