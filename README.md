@@ -233,7 +233,9 @@ krushi/
 | `/api/auth/me` | GET | Current session user |
 | `/api/auth/profile` | PUT | Update farm profile (login required) |
 | `/api/auth/forgot-password` | POST | Issues a reset token (returned directly — see note below) |
-| `/api/auth/reset-password` | POST | Consume the token, set a new password |
+| `/api/auth/forgot-password` | POST | Emails a 6-digit reset code (or returns it directly if SMTP isn't configured) |
+| `/api/auth/verify-reset-code` | POST | Checks the code without consuming it — the reset form only unlocks after this succeeds |
+| `/api/auth/reset-password` | POST | Consume the code, set a new password |
 | `/api/admin/users` | GET | List farmers + usage stats (admin only) |
 
 **Core**
@@ -293,13 +295,22 @@ live weather for the location is fetched and used.
 
 ## On the forgot-password flow
 
-`/api/auth/forgot-password` now sends a **real email** via SMTP if you've
-set `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASSWORD` in `.env` (see
-`.env.example` for Gmail App Password setup instructions — a normal Gmail
-password won't work, it needs an App Password). Without those set, it
-falls back to returning the reset token directly in the API response,
-clearly labeled as the dev-mode stand-in rather than silently doing
-nothing. See `auth.send_email()` in `auth.py`.
+This is a real 3-step OTP flow, not a single-step token: (1) request a
+code, (2) verify the code — the app calls `/api/auth/verify-reset-code`,
+which checks the code WITHOUT consuming it, so a wrong code just fails
+cleanly and you can retry — (3) only once verified does the new-password
+form unlock, and *that* submission is what actually consumes the code.
+
+`/api/auth/forgot-password` sends a **real 6-digit code by email** via
+SMTP if you've set `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASSWORD` in
+`.env` (see `.env.example` for Gmail App Password setup — a normal Gmail
+password won't work, it needs an App Password from
+https://myaccount.google.com/apppasswords). Without SMTP configured,
+there is no way to actually deliver an email, so the code is shown
+inline instead, clearly labeled as the dev-only fallback — the
+verify/consume logic is identical either way, so switching on real SMTP
+doesn't change any behavior, just how the code reaches you. See
+`auth.send_email()` / `auth.create_password_reset()` in `auth.py`.
 
 ## On admin accounts
 
