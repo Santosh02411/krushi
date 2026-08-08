@@ -118,6 +118,18 @@
       </div>
       <div class="crop-grid" id="crop-grid"></div>
     </div>
+
+    <div class="section-head" style="margin-top:50px;">
+      <div class="eyebrow on-light">Real, state-grounded — 49 crops</div>
+      <h3 style="font-size:1.2rem;">Commonly grown in your state</h3>
+      <p>Real government production records, ranked by how consistently each crop is actually grown
+        there — covering field crops the soil-based model above doesn't know at all (sugarcane,
+        tobacco, jowar, bajra, ragi, wheat, onion, and more). This is a real ranked list of what's
+        actually grown there, not a trained prediction — climate/season alone can't reliably tell
+        which single crop to recommend, so this shows real records instead of a guessed score.</p>
+    </div>
+    <div id="regional-crops-empty" class="empty-dash" style="display:none;">Select a state above and click "Get crop recommendations" to see real crops grown there.</div>
+    <div class="crop-grid" id="regional-crop-grid"></div>
   </div>
 </section>
 {% endblock %}

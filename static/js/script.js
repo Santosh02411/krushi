@@ -568,6 +568,14 @@ async function getRecommendations() {
         if (wdata.success) { renderForecast(wdata.forecast); renderAlerts(wdata.alerts); }
       } catch (e) { /* skip forecast/alerts if unavailable */ }
     }
+
+    if (payload.state) {
+      loadRegionalCrops(payload.state);
+    } else {
+      $('regional-crops-empty').style.display = 'block';
+      $('regional-crops-empty').textContent = 'Select a state above to see real crops grown there.';
+      $('regional-crop-grid').innerHTML = '';
+    }
   } catch (e) {
     errorEl.textContent = 'Could not get recommendations: ' + e.message;
     errorEl.classList.add('show');
@@ -575,6 +583,35 @@ async function getRecommendations() {
     loadingEl.classList.remove('show');
     $('recommend-btn').disabled = false;
   }
+}
+
+async function loadRegionalCrops(state) {
+  try {
+    const res = await fetch(`/api/regional-crops?state=${encodeURIComponent(state)}&top_n=12`, { credentials: 'include' });
+    const data = await res.json();
+    renderRegionalCrops(data.result);
+  } catch (e) { /* section stays empty */ }
+}
+
+function renderRegionalCrops(result) {
+  const empty = $('regional-crops-empty');
+  const grid = $('regional-crop-grid');
+  if (!result || !result.covered) {
+    empty.style.display = 'block';
+    empty.textContent = (result && result.message) || 'No real records for this state.';
+    grid.innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.innerHTML = result.crops.map(c => `
+    <div class="card crop-card">
+      <h3>${c.crop}</h3>
+      <p class="desc">${c.records} real records · seasons: ${c.seasons.join(', ')}</p>
+      <div class="badge-row">
+        ${c.typical_yield_tonnes_per_ha ? `<span class="badge water">${c.typical_yield_tonnes_per_ha} t/ha typical</span>` : ''}
+        ${c.also_in_soil_model ? '<span class="badge season">✓ also in soil-based advisor above</span>' : ''}
+      </div>
+    </div>`).join('');
 }
 
 function renderWeatherSummary(weather) {
