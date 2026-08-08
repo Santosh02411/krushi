@@ -24,7 +24,7 @@ from market_service import MarketService
 from ml_models import CropRecommendationModel, WaterManagementAdvisor
 from notifications import build_notifications
 from profit_estimation import estimate_profit
-from regional_crops import is_grown_in_state
+from regional_crops import get_common_crops, is_grown_in_state
 from soil_health import analyze_soil
 from weather_service import WeatherService
 from yield_model import YieldModel
@@ -268,6 +268,18 @@ def reference_data():
             {"code": "ta", "label": "Tamil"}, {"code": "te", "label": "Telugu"},
         ],
     })
+
+
+@app.route("/api/regional-crops")
+@auth.login_required
+def regional_crops_route():
+    """Real crops grown in a given state, from government production
+    records — covers 49 real crops (sugarcane, tobacco, jowar, bajra,
+    ragi, groundnut, wheat, onion, and more), not just the 22 the
+    N/P/K soil-based model knows. See regional_crops.py for why this is
+    a real ranked list, not a trained confidence score."""
+    state = request.args.get("state", "")
+    return jsonify({"success": True, "result": get_common_crops(state, top_n=int(request.args.get("top_n", 15)))})
 
 
 # ========================================================================= #
