@@ -232,6 +232,21 @@ function populateDistricts() {
   const state = $('state').value;
   const districts = (referenceData && referenceData.districts_by_state[state]) || [];
   fillSelect($('district'), districts, 'Select district');
+
+  // Changing state with no matching climate refresh was the real cause of
+  // "predictions look the same for every state": the model has zero
+  // location input of its own, so if temperature/humidity/rainfall still
+  // hold stale values from a previous fetch, results are mathematically
+  // guaranteed to be identical regardless of which state is selected.
+  // Auto-refresh real weather for the newly selected state (or state +
+  // district, if both are set) unless the user has GPS coordinates set,
+  // which are more precise and shouldn't be overridden by a state-level
+  // fetch.
+  if (state && !userCoords) {
+    const query = $('district') && $('district').value ? `${$('district').value}, ${state}` : state;
+    if ($('location') && !$('location').value.trim()) $('location').value = query;
+    fetchWeatherPreview();
+  }
 }
 
 // ---------------------------------------------------------------------- //
