@@ -96,6 +96,9 @@ function initMarketPage() {
   checkSession();
   loadReferenceData();
   $('market-search-btn').addEventListener('click', searchMarket);
+  $('market-crop').addEventListener('change', () => {
+    $('market-crop-other').style.display = $('market-crop').value === 'other' ? 'block' : 'none';
+  });
 }
 
 function initFertilizerPage() {
@@ -830,7 +833,7 @@ function renderSoilHealth(result) {
 // Market
 // ---------------------------------------------------------------------- //
 async function searchMarket() {
-  const crop = $('market-crop').value.trim();
+  const crop = $('market-crop').value === 'other' ? val('market-crop-other').trim() : $('market-crop').value.trim();
   const errorEl = $('market-error');
   const loadingEl = $('market-loading');
   errorEl.classList.remove('show');

@@ -7,15 +7,19 @@
       <div class="eyebrow on-light">Step 3</div>
       <h2>Market price</h2>
       <p>Real per-market prices from government mandi records, an ML price prediction, and the
-        nearest real markets to your location — currently covers <b>potato, tomato and wheat</b>.</p>
+        nearest real markets to your location. <b>Potato, tomato and wheat</b> work offline (no key
+        needed — the local model's real held-out R²=0.40, shown honestly since it's modest). With a
+        free <code>MARKET_API_KEY</code> from data.gov.in, any crop can be checked live — pick
+        "Other" below to type one in.</p>
     </div>
 
     <div class="card" style="max-width:520px;">
       <div class="location-row">
         <select id="market-crop">
           <option value="wheat">Wheat</option><option value="potato">Potato</option>
-          <option value="tomato">Tomato</option>
+          <option value="tomato">Tomato</option><option value="other">Other (live API only)</option>
         </select>
+        <input type="text" id="market-crop-other" placeholder="e.g. onion, rice, sugarcane" style="display:none;">
         <select id="market-state" style="max-width:180px;"><option value="">Any state</option></select>
         <button class="btn btn-primary btn-small" id="market-search-btn" type="button">Check prices</button>
       </div>

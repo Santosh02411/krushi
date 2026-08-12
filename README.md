@@ -31,8 +31,8 @@ anything else if you're not signed in.
    ML price prediction, nearest real market to your location
 6. **Fertilizer recommendation** — after picking a crop, which fertilizer,
    how much, roughly what it costs, and when to apply it
-7. **Disease check** — symptom-based reference matching for common crop
-   diseases (see note below on why this isn't image AI)
+7. **Disease check** — symptom-based reference matching for 24 crops
+   (see note below on why this isn't image AI)
 8. **Photo/camera capture for disease records** — real upload/camera
    capture, kept for your reference, not analyzed by any model
 9. **Irrigation recommendation + crop calendar** — 7-day irrigation
@@ -81,13 +81,28 @@ Everything auto-fills from your real GPS location where possible.
 | Rain alerts / heatwave warnings | Rule-based thresholds applied to the real forecast above. | **Real, transparent logic.** |
 | Soil health score / fertilizer guidance | India's Soil Health Card classification bands (published standard, not ML). | **Real reference ranges**, general guidance — not a substitute for a lab test. |
 | Market prices (per real market) | Real Agmarknet mandi records (`data/market_prices_by_location.csv`), decoded to real market/state names. | **Real, covers potato/tomato/wheat** across 18 real markets in Haryana/Punjab/UP/Uttarakhand. |
-| Market price prediction | Same dataset, `RandomForestRegressor`. | **Real, same 3-crop coverage.** Held-out R²=0.40 (modest — shown honestly). Live data.gov.in feed used instead if `MARKET_API_KEY` is set. **Note:** data.gov.in is frequently slow/unreachable from some networks; a request that would otherwise wait out a full timeout on every crop lookup instead trips a short circuit breaker after one failure and falls straight to the local model for the next couple of minutes — see `market_service.py`. |
+| Market price prediction | Same dataset, `RandomForestRegressor`. | **Real, offline coverage stays at 3 crops (potato/tomato/wheat)** — I searched again for a larger real multi-crop Agmarknet-style dataset and didn't find one solid enough to add (see note in the "Broader market prices" section below). Held-out R²=0.40 (modest — shown honestly). With `MARKET_API_KEY` set, the market page's "Other" option queries data.gov.in live for **any** crop name — if a state-specific query returns nothing, it retries nationally rather than giving up, clearly labeled as a national (not state-specific) figure when that happens. **Note:** data.gov.in is frequently slow/unreachable from some networks; a request that would otherwise wait out a full timeout on every crop lookup instead trips a short circuit breaker after one failure and falls straight to the local model for the next couple of minutes — see `market_service.py`. |
+
+### Broader market prices — what I tried
+
+I searched again (GitHub repo search + direct downloads, several query
+variations) for a larger real dataset with per-market price records
+across more crops than potato/tomato/wheat, to genuinely expand the
+offline model. I didn't find one solid enough to add — the closest hit
+was a repo with only commodity-ID lookup tables, no actual price
+records. Rather than fabricate one, I made the *live* data.gov.in path
+(which genuinely does cover far more crops) more useful instead: the
+market page now has an "Other" crop option for typing in any commodity
+name, and a failed state-specific query now retries nationally instead
+of giving up. If you find a real, larger Agmarknet-style dataset, drop
+it in `data/market_price_data.csv` (same column format as the existing
+one) and the offline model will retrain on it automatically.
 | Nearest market | Real market coordinates (hardcoded for the 16 confidently-identified towns in the dataset) + haversine distance from your GPS. | **Real**, for the 3 covered crops. |
 | Profitability rating | Expected yield × predicted price, ranked relative to other recommended crops. | **Real where both a yield estimate and a price estimate exist for a crop** — in practice this means the crop-recommendation set (22 crops) and the market-price set (3 crops) rarely overlap, so profitability shows "insufficient data" for most crops today. See below. |
 | Fertilizer plan (quantity/cost/schedule) | Published package-of-practices N-P-K doses for major crops, converted to physical fertilizer quantities and representative bag prices. | **Real reference data, covers 12 crops.** Costs are approximate, not live pricing. |
 | Irrigation schedule + "Water Required / Next Irrigation" headline | Same rule-based water-balance calculation as before, now with a one-line summary derived from the same schedule. | **Real, transparent logic.** |
 | Crop calendar (sowing/fertilizer/irrigation/harvest dates) | Published crop-duration and growth-stage timing references, plus the fertilizer/irrigation data above. | **Real arithmetic on real reference data, covers 13 annual crops.** Perennial crops get a simpler seasonal-care note instead of a fabricated single harvest date. |
-| Disease check | A symptom-matching reference table for common diseases (5 crops), sourced from standard plant-pathology/extension knowledge. | **Real reference data — explicitly NOT image AI.** See below for why. |
+| Disease check | A symptom-matching reference table for common diseases (24 crops), sourced from standard plant-pathology/extension knowledge. | **Real reference data — explicitly NOT image AI.** See below for why. |
 | Disease photo / camera capture | Real file upload / browser camera capture. | **Real upload, stored for your own reference — not analyzed.** |
 | Standalone yield prediction | Same yield_model.py as the crop advisor, converted to total tonnes for your entered area. | **Real, same 11-crop coverage.** "Accuracy" is the model's R² expressed as a percentage — labeled as such, not classification accuracy. |
 | Profit estimation | Real yield × real price (or your entered price) minus your entered expenses. | **Real arithmetic on real/user inputs.** Since the yield-covered crops (11) and price-covered crops (3) don't overlap, most crops need you to enter an expected price — the app says so rather than guessing one. |

@@ -86,13 +86,16 @@ class MarketService:
     # ------------------------------------------------------------------ #
     def _fetch_data_gov_in(self, crop, state=None):
         try:
-            params = {"api-key": self.api_key, "format": "json", "limit": 20,
-                      "filters[commodity]": crop.title()}
-            if state:
-                params["filters[state]"] = state
-            resp = requests.get(DATA_GOV_URL, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
-            resp.raise_for_status()
-            records = resp.json().get("records", [])
+            records = self._query_data_gov_in(crop, state)
+            if not records and state:
+                # Real record for this crop nationally, just not (yet, in
+                # this feed) tagged to this specific state — a genuine
+                # broader real result beats no result, and it's still
+                # clearly labeled as national rather than state-specific.
+                records = self._query_data_gov_in(crop, state=None)
+                national_fallback = bool(records)
+            else:
+                national_fallback = False
 
             prices = []
             for r in records:
@@ -111,13 +114,23 @@ class MarketService:
                 "predicted_modal_price": round(sum(prices) / len(prices), 0),
                 "observed_price_range": [min(prices), max(prices)],
                 "sample_size": len(prices),
-                "data_source": "real (data.gov.in, live)",
+                "data_source": "real (data.gov.in, live, national average — no state-specific "
+                                "record found)" if national_fallback else "real (data.gov.in, live)",
             }
         except Exception as e:
             print(f"[market_service] data.gov.in fetch failed ({e}) — skipping it for the next "
                   f"{CIRCUIT_BREAKER_COOLDOWN_SECONDS}s instead of retrying on every request.")
             self._data_gov_down_until = time.time() + CIRCUIT_BREAKER_COOLDOWN_SECONDS
             return None
+
+    def _query_data_gov_in(self, crop, state=None):
+        params = {"api-key": self.api_key, "format": "json", "limit": 20,
+                  "filters[commodity]": crop.title()}
+        if state:
+            params["filters[state]"] = state
+        resp = requests.get(DATA_GOV_URL, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
+        resp.raise_for_status()
+        return resp.json().get("records", [])
 
     def get_market_news(self, crop=None):
         """Illustrative agri-market news items (static, not a live news feed)."""
