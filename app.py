@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 
 from dotenv import load_dotenv
@@ -641,8 +642,18 @@ def recommend_crops():
             rec["season_match"] = (
                 season is not None and season.strip().lower() in rec.get("season", "").lower()
             ) if season else None
-            rec["market_estimate"] = market_service.get_price_estimate(rec["crop"], state=state)
             rec["regionally_grown"] = is_grown_in_state(rec["crop"], state) if state else None
+
+        # market_estimate is the one network-hitting call per crop (yield
+        # is a local model lookup) — run these concurrently instead of one
+        # at a time, so a slow/unreachable live price API costs one wait,
+        # not one wait PER recommended crop.
+        with ThreadPoolExecutor(max_workers=len(recommendations)) as pool:
+            market_results = pool.map(
+                lambda rec: market_service.get_price_estimate(rec["crop"], state=state), recommendations
+            )
+        for rec, market_estimate in zip(recommendations, market_results):
+            rec["market_estimate"] = market_estimate
 
         if state:
             # Only a CONFIRMED real match (True) gets bubbled up. None and

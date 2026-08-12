@@ -72,7 +72,7 @@ class WeatherService:
     def _geocode(self, location):
         try:
             resp = requests.get(
-                GEOCODE_URL, params={"name": location, "count": 1}, timeout=8
+                GEOCODE_URL, params={"name": location, "count": 1}, timeout=4
             )
             resp.raise_for_status()
             results = resp.json().get("results")
@@ -103,7 +103,7 @@ class WeatherService:
                                "wind_speed_10m,weather_code,uv_index",
                     "timezone": "auto",
                 },
-                timeout=8,
+                timeout=4,
             )
             resp.raise_for_status()
             cur = resp.json().get("current", {})
@@ -138,7 +138,7 @@ class WeatherService:
                     "forecast_days": days,
                     "timezone": "auto",
                 },
-                timeout=8,
+                timeout=4,
             )
             resp.raise_for_status()
             daily = resp.json().get("daily", {})
@@ -172,7 +172,7 @@ class WeatherService:
                                "wind_speed_10m,weather_code,uv_index",
                     "timezone": "auto",
                 },
-                timeout=8,
+                timeout=4,
             )
             resp.raise_for_status()
             cur = resp.json().get("current", {})
@@ -203,7 +203,7 @@ class WeatherService:
                     "forecast_days": days,
                     "timezone": "auto",
                 },
-                timeout=8,
+                timeout=4,
             )
             resp.raise_for_status()
             daily = resp.json().get("daily", {})
@@ -232,7 +232,7 @@ class WeatherService:
             resp = requests.get(
                 f"{OWM_BASE_URL}/weather",
                 params={"lat": lat, "lon": lon, "appid": self.owm_api_key, "units": "metric"},
-                timeout=8,
+                timeout=4,
             )
             if resp.status_code == 401:
                 print("[weather_service] OpenWeatherMap key invalid, falling back")
@@ -260,7 +260,7 @@ class WeatherService:
             resp = requests.get(
                 f"{OWM_BASE_URL}/forecast",
                 params={"lat": lat, "lon": lon, "appid": self.owm_api_key, "units": "metric"},
-                timeout=8,
+                timeout=4,
             )
             if resp.status_code == 401:
                 return None
@@ -338,7 +338,7 @@ class WeatherService:
             resp = requests.get(
                 f"{OWM_BASE_URL}/weather",
                 params={"q": location, "appid": self.owm_api_key, "units": "metric"},
-                timeout=8,
+                timeout=4,
             )
             if resp.status_code == 401:
                 print("[weather_service] OpenWeatherMap key invalid, falling back")
@@ -366,7 +366,7 @@ class WeatherService:
             resp = requests.get(
                 f"{OWM_BASE_URL}/forecast",
                 params={"q": location, "appid": self.owm_api_key, "units": "metric"},
-                timeout=8,
+                timeout=4,
             )
             if resp.status_code == 401:
                 return None

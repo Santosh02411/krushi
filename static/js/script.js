@@ -1365,6 +1365,11 @@ async function loadHomeNotifications() {
   try {
     const res = await fetch('/api/notifications', { credentials: 'include' });
     const data = await res.json();
+    const badge = $('nav-notif-badge');
+    if (badge && data.success && data.notifications.length) {
+      badge.textContent = `${data.notifications.length} alert${data.notifications.length !== 1 ? 's' : ''}`;
+      badge.style.display = 'inline-block';
+    }
     if (!data.success || !data.notifications.length) {
       el.innerHTML = '<p class="notif-empty">Nothing needs attention right now — build a crop calendar to get fertilizer/harvest reminders.</p>';
       return;

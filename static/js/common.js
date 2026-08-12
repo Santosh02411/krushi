@@ -67,7 +67,10 @@ async function handleDeleteAccount() {
 
 async function loadNavNotifBadge() {
   const badge = document.getElementById('nav-notif-badge');
-  if (!badge) return;
+  // On the home page, initHomePage() already fetches the full
+  // notifications list (which does a live weather call) — fetching it
+  // again here just for the badge count doubles that work for no reason.
+  if (!badge || document.getElementById('home-notif-list')) return;
   try {
     const res = await fetch('/api/notifications', { credentials: 'include' });
     if (res.status === 401) return; // not logged in, no badge

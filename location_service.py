@@ -71,7 +71,7 @@ class LocationService:
         """Resolve a free-text place name to coordinates via Open-Meteo."""
         try:
             resp = requests.get(
-                GEOCODE_URL, params={"name": location_string, "count": 1}, timeout=8
+                GEOCODE_URL, params={"name": location_string, "count": 1}, timeout=4
             )
             resp.raise_for_status()
             results = resp.json().get("results")
@@ -92,7 +92,7 @@ class LocationService:
             resp = requests.get(
                 REVERSE_GEOCODE_URL,
                 params={"latitude": lat, "longitude": lon, "localityLanguage": "en"},
-                timeout=8,
+                timeout=4,
             )
             resp.raise_for_status()
             data = resp.json()
