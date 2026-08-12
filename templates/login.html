@@ -115,12 +115,15 @@
 
       <div class="card how-card">
         <h3 style="font-size:1.05rem;">About the forgot-password flow</h3>
+        <div id="email-status-badge" class="location-status" style="margin-bottom:12px;">Checking email configuration…</div>
         <p class="hint">If you've set <code>SMTP_HOST</code>/<code>SMTP_USER</code>/<code>SMTP_PASSWORD</code>
           in <code>.env</code>, the 6-digit code is emailed to your real address, and you must enter
           the matching code before you're allowed to set a new password. Without SMTP configured,
           there's no way to actually deliver an email, so the code is shown inline instead — clearly
           labeled as the dev-only fallback, not a substitute for real email. See <code>.env.example</code>
-          for Gmail App Password setup.</p>
+          for Gmail App Password setup, or run <code>python scripts/test_email.py you@example.com</code>
+          to test your SMTP setup directly, independent of the web app. <b>Just edited .env? Restart
+          the server</b> — environment variables are only read once, at startup.</p>
       </div>
     </div>
   </div>

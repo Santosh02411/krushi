@@ -201,6 +201,7 @@ krushi/
 ├── chat_service.py            # Real Anthropic API chatbot integration
 ├── knowledge_base.py          # Articles, schemes, eligibility checker
 ├── scripts/create_admin.py   # CLI-only admin account creation
+├── scripts/test_email.py     # standalone SMTP test, independent of the web app
 ├── data/
 │   ├── Crop_recommendation.csv       # real 2,200-row crop training dataset
 │   ├── crop_yield_data.csv           # real 19,689-row national yield dataset
@@ -234,6 +235,7 @@ krushi/
 | `/api/auth/me` | GET | Current session user |
 | `/api/auth/profile` | PUT | Update farm profile (login required) |
 | `/api/auth/forgot-password` | POST | Issues a reset token (returned directly — see note below) |
+| `/api/auth/email-status` | GET | Live ✓/✗ whether SMTP is currently configured (no credentials exposed) |
 | `/api/auth/forgot-password` | POST | Emails a 6-digit reset code (or returns it directly if SMTP isn't configured) |
 | `/api/auth/verify-reset-code` | POST | Checks the code without consuming it — the reset form only unlocks after this succeeds |
 | `/api/auth/reset-password` | POST | Consume the code, set a new password |
@@ -313,6 +315,28 @@ inline instead, clearly labeled as the dev-only fallback — the
 verify/consume logic is identical either way, so switching on real SMTP
 doesn't change any behavior, just how the code reaches you. See
 `auth.send_email()` / `auth.create_password_reset()` in `auth.py`.
+
+### Email not arriving? Debug it in this order
+
+1. **Run `python scripts/test_email.py you@example.com`.** This sends one
+   real email completely independent of the web app, and prints the
+   exact SMTP error if it fails — much faster than debugging through the
+   register/forgot-password flow.
+2. **Did you restart the server after editing `.env`?** This is the
+   single most common cause of "I set it up and it's still not working."
+   Flask reads environment variables once, at startup — saving `.env`
+   while `python app.py` is already running does nothing until you stop
+   it (Ctrl+C) and start it again.
+3. **Check the live status on the login page** — the "About the
+   forgot-password flow" card shows a real-time ✓/✗ badge (from
+   `/api/auth/email-status`) telling you whether the *running* server
+   currently sees SMTP as configured.
+4. **Gmail specifically**: you need an **App Password**, not your normal
+   Gmail password — Google blocks normal passwords for this. Generate
+   one at https://myaccount.google.com/apppasswords, which requires
+   2-Step Verification to be turned on first.
+5. **Check spam/junk** — a first email from a new sender sometimes lands
+   there.
 
 ## On admin accounts
 

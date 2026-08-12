@@ -18,6 +18,7 @@ let currentUser = null;
 // ---------------------------------------------------------------------- //
 function initLoginPage() {
   loadReferenceData();
+  loadEmailStatus();
   document.querySelectorAll('.auth-tab').forEach(tab => {
     tab.addEventListener('click', () => switchAuthTab(tab.dataset.tab));
   });
@@ -27,6 +28,25 @@ function initLoginPage() {
   $('verify-form').addEventListener('submit', handleVerifyCode);
   $('reset-form').addEventListener('submit', handleReset);
   initPasswordEyeToggles();
+}
+
+async function loadEmailStatus() {
+  const badge = $('email-status-badge');
+  if (!badge) return;
+  try {
+    const res = await fetch('/api/auth/email-status');
+    const data = await res.json();
+    if (data.configured) {
+      badge.textContent = `✓ Email is configured (sending via ${data.host}) — codes will be sent for real.`;
+      badge.className = 'location-status ok';
+    } else {
+      badge.textContent = '✗ Email is NOT configured — SMTP_* is empty in .env, so codes are shown ' +
+        'on screen instead of emailed. See below to set this up.';
+      badge.className = 'location-status warn';
+    }
+  } catch (e) {
+    badge.textContent = 'Could not check email configuration status.';
+  }
 }
 
 function initPasswordEyeToggles() {

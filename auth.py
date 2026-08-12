@@ -5,12 +5,13 @@ Session-based authentication with real password hashing (werkzeug's
 scrypt-based hasher — no plaintext or reversible storage) and role-based
 access (farmer/admin).
 
-Forgot-password is implemented honestly: this app has no email service
-configured, so instead of pretending to "send an email" it generates a
-real, single-use, time-limited reset token and returns it directly in the
-API response, clearly labeled as a dev-mode stand-in for emailing it. See
-README for how to wire up a real mail provider (e.g. SMTP or SendGrid) to
-replace that step in production.
+Email (welcome message, password reset codes) is sent for real via SMTP
+if SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD are set in .env — see
+.env.example for Gmail App Password setup, and scripts/test_email.py to
+verify your configuration independent of the web app. Without SMTP
+configured, there is no way to actually deliver an email, so the reset
+code is returned directly in the API response instead, clearly labeled
+as the dev-mode fallback.
 """
 
 import os
@@ -26,6 +27,20 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "krushi.db")
 RESET_TOKEN_TTL_MINUTES = 30
+
+
+def email_config_status():
+    """Safe to expose publicly — reports WHETHER SMTP is configured and
+    which host, never the password. Lets the login page show a real,
+    live status instead of the user having to guess whether their .env
+    edits actually took effect (a common gotcha: env vars are only read
+    once, at server startup — editing .env while the server is running
+    does nothing until it's restarted)."""
+    host = os.getenv("SMTP_HOST")
+    user = os.getenv("SMTP_USER")
+    configured = bool(host and os.getenv("SMTP_PORT") and user and os.getenv("SMTP_PASSWORD"))
+    return {"configured": configured, "host": host if configured else None,
+            "user": user if configured else None}
 
 
 def send_email(to_email, subject, body):

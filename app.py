@@ -363,6 +363,11 @@ def delete_account():
     return jsonify({"success": True})
 
 
+@app.route("/api/auth/email-status")
+def email_status():
+    return jsonify({"success": True, **auth.email_config_status()})
+
+
 @app.route("/api/auth/forgot-password", methods=["POST"])
 def forgot_password():
     data = request.json or {}
