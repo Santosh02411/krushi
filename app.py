@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 import sqlite3
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -8,6 +9,8 @@ from datetime import date, datetime
 from dotenv import load_dotenv
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -30,13 +33,82 @@ from soil_health import analyze_soil
 from weather_service import WeatherService
 from yield_model import YieldModel
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_env_path = os.path.join(BASE_DIR, ".env")
+# Explicit path (not just load_dotenv()'s auto-discovery) so there's no
+# ambiguity about which .env gets read regardless of the working directory
+# the app happens to be launched from.
+load_dotenv(_env_path)
+
+# Startup diagnostic: prints exactly what got picked up from .env, without
+# ever printing the password itself. If this doesn't match what you put in
+# .env, the file either isn't at BASE_DIR/.env, has a parsing problem
+# (stray characters, e.g. an accidentally-pasted markdown code-fence line),
+# or you're looking at output from before your last edit — env vars are
+# only read once, at process startup, so an edit needs a restart to apply.
+if os.path.exists(_env_path):
+    _smtp_status = {k: bool(os.getenv(k)) for k in
+                     ("SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD")}
+    print(f"[app] Loaded .env from {_env_path}")
+    print(f"[app] SMTP env vars detected (True = present, value not shown): {_smtp_status}")
+    if not all(_smtp_status.values()):
+        _missing = [k for k, present in _smtp_status.items() if not present]
+        print(f"[app] SMTP not fully configured — missing/empty: {', '.join(_missing)}. "
+              f"Password-reset codes will be shown on-screen instead of emailed until this is fixed. "
+              f"Run: python scripts/test_email.py you@example.com for a detailed diagnosis.")
+else:
+    print(f"[app] No .env file found at {_env_path} — the app will run with defaults "
+          f"(no SMTP, no Gemini chat, no live market API). Copy .env.example to .env to configure these.")
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "krushi-dev-secret-key")
-CORS(app, supports_credentials=True)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# SECRET_KEY: use the env var if set (required for production — without a
+# stable key, sessions break on every restart/redeploy and, worse, on a
+# multi-process deploy each worker would sign with a different key). If it
+# isn't set, generate a random one for this process rather than falling
+# back to a fixed, publicly-known default — a hardcoded secret in an
+# open-source repo is a real session-forgery hole the moment anyone
+# deploys without configuring their own.
+_secret_key = os.getenv("SECRET_KEY")
+if not _secret_key:
+    _secret_key = secrets.token_hex(32)
+    print(
+        "[app] WARNING: SECRET_KEY not set in .env — using a random key for this process. "
+        "Sessions will NOT survive a restart, and this is unsafe for any multi-worker/production "
+        "deployment. Set SECRET_KEY in .env (any long random string) before deploying."
+    )
+app.secret_key = _secret_key
+
+# Session cookie hardening. SESSION_COOKIE_SECURE is opt-in via env rather
+# than always-on, because always-on would silently break login on a local
+# plain-http dev server; set COOKIE_SECURE=1 once this runs behind HTTPS.
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "0") == "1",
+)
+
+# CORS: only allow the configured origin(s) to make credentialed requests,
+# rather than reflecting any origin (the effective behavior of enabling
+# supports_credentials with no allowlist) — that combination lets any
+# website read authenticated responses from a logged-in user's browser.
+# Defaults to common local dev origins; set ALLOWED_ORIGINS in .env
+# (comma-separated) for anything else, including your real deployed domain.
+_allowed_origins = [o.strip() for o in os.getenv(
+    "ALLOWED_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000"
+).split(",") if o.strip()]
+CORS(app, supports_credentials=True, origins=_allowed_origins)
+
+# Rate limiting: protects login/register from brute-force and credential
+# stuffing, and protects /api/chat from one user burning through the whole
+# app's (usually free-tier, shared) Gemini quota. In-memory storage is
+# fine for a single-process dev/small deployment; point REDIS_URL at a
+# real store for multi-worker production so limits are shared correctly.
+limiter = Limiter(
+    get_remote_address, app=app, storage_uri=os.getenv("REDIS_URL", "memory://"),
+    default_limits=[], strategy="fixed-window",
+)
+
 DB_PATH = os.path.join(BASE_DIR, "krushi.db")
 
 # Services -- initialised once at startup. All three ML models train on
@@ -287,6 +359,7 @@ def regional_crops_route():
 # Auth (these stay public — they're how you get a session in the first place)
 # ========================================================================= #
 @app.route("/api/auth/register", methods=["POST"])
+@limiter.limit("8 per hour")
 def register():
     data = request.json or {}
     name, email, password = data.get("name", "").strip(), data.get("email", "").strip(), data.get("password", "")
@@ -316,6 +389,7 @@ def register():
 
 
 @app.route("/api/auth/login", methods=["POST"])
+@limiter.limit("15 per minute")
 def login():
     data = request.json or {}
     user = auth.authenticate(data.get("email", ""), data.get("password", ""))
@@ -369,6 +443,7 @@ def email_status():
 
 
 @app.route("/api/auth/forgot-password", methods=["POST"])
+@limiter.limit("5 per hour")
 def forgot_password():
     data = request.json or {}
     email = data.get("email", "")
@@ -408,6 +483,7 @@ def forgot_password():
 
 
 @app.route("/api/auth/verify-reset-code", methods=["POST"])
+@limiter.limit("10 per hour")
 def verify_reset_code():
     data = request.json or {}
     ok, error = auth.verify_reset_code(data.get("email", ""), data.get("token", ""))
@@ -417,6 +493,7 @@ def verify_reset_code():
 
 
 @app.route("/api/auth/reset-password", methods=["POST"])
+@limiter.limit("10 per hour")
 def reset_password_route():
     data = request.json or {}
     ok, error = auth.reset_password(data.get("email", ""), data.get("token", ""), data.get("new_password", ""))
@@ -1167,6 +1244,7 @@ def notifications():
 # ========================================================================= #
 @app.route("/api/chat", methods=["POST"])
 @auth.login_required
+@limiter.limit("20 per hour")
 def chat():
     data = request.json or {}
     result = chat_service.send_message(data.get("message", ""), history=data.get("history", []))
@@ -1175,7 +1253,13 @@ def chat():
 
 if __name__ == "__main__":
     init_db()
+    # debug mode is opt-in via env, not hardcoded — Flask's debug mode
+    # exposes an interactive in-browser debugger that lets anyone who can
+    # trigger an unhandled exception execute arbitrary Python on the
+    # server. Fine for local development (set FLASK_DEBUG=1), never safe
+    # to leave on for anything reachable outside your own machine.
     # use_reloader=False: the debug reloader watches the whole project
     # directory, including krushi.db — every recommendation/login write to
     # that SQLite file was triggering a full server restart mid-session.
-    app.run(debug=True, use_reloader=False, host="0.0.0.0", port=5000)
+    debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
+    app.run(debug=debug_mode, use_reloader=False, host="0.0.0.0", port=5000)

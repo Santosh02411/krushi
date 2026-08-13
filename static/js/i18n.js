@@ -92,6 +92,7 @@ const I18N = {
     'footer.data_sources': 'Data sources: Open-Meteo (weather), browser GPS + reverse geocoding (location), '
       + 'real published agronomy datasets (crop/yield/market models), Google Gemini API (chatbot, if configured).',
     'common.loading': 'Loading…',
+    'notif.panel_title': 'Alerts',
     'home.eyebrow': 'Live field reading', 'home.welcome': 'Welcome back',
     'home.lead': 'Krushi reads your soil test values against live weather for your exact GPS location and a '
       + 'model trained on 2,200 real field samples across 22 crops — the panel on the right is pulling its '
@@ -156,6 +157,7 @@ const I18N = {
     'footer.data_sources': 'डेटा स्रोत: Open-Meteo (मौसम), ब्राउज़र GPS + रिवर्स जियोकोडिंग (स्थान), वास्तविक '
       + 'प्रकाशित कृषि डेटासेट (फ़सल/उपज/बाज़ार मॉडल), Google Gemini API (चैटबॉट, यदि कॉन्फ़िगर किया गया हो)।',
     'common.loading': 'लोड हो रहा है…',
+    'notif.panel_title': 'अलर्ट',
     'home.eyebrow': 'लाइव फ़ील्ड रीडिंग', 'home.welcome': 'वापसी पर स्वागत है',
     'home.lead': 'कृषि आपके मिट्टी परीक्षण मूल्यों को आपके सटीक GPS स्थान के लाइव मौसम के साथ और 22 फ़सलों के '
       + '2,200 वास्तविक क्षेत्र नमूनों पर प्रशिक्षित मॉडल के साथ पढ़ता है — दाईं ओर का पैनल अभी उसी मॉडल से '
@@ -219,6 +221,7 @@ const I18N = {
     'footer.data_sources': 'ಡೇಟಾ ಮೂಲಗಳು: Open-Meteo (ಹವಾಮಾನ), ಬ್ರೌಸರ್ GPS + ರಿವರ್ಸ್ ಜಿಯೋಕೋಡಿಂಗ್ (ಸ್ಥಳ), ನೈಜ '
       + 'ಪ್ರಕಟಿತ ಕೃಷಿ ಡೇಟಾಸೆಟ್‌ಗಳು (ಬೆಳೆ/ಇಳುವರಿ/ಮಾರುಕಟ್ಟೆ ಮಾದರಿಗಳು), Google Gemini API (ಚಾಟ್‌ಬಾಟ್, ಕಾನ್ಫಿಗರ್ ಮಾಡಿದ್ದರೆ).',
     'common.loading': 'ಲೋಡ್ ಆಗುತ್ತಿದೆ…',
+    'notif.panel_title': 'ಎಚ್ಚರಿಕೆಗಳು',
     'home.eyebrow': 'ಲೈವ್ ಫೀಲ್ಡ್ ರೀಡಿಂಗ್', 'home.welcome': 'ಮತ್ತೆ ಸ್ವಾಗತ',
     'home.lead': 'ಕೃಷಿ ನಿಮ್ಮ ಮಣ್ಣಿನ ಪರೀಕ್ಷಾ ಮೌಲ್ಯಗಳನ್ನು ನಿಮ್ಮ ನಿಖರ GPS ಸ್ಥಳದ ಲೈವ್ ಹವಾಮಾನ ಮತ್ತು 22 ಬೆಳೆಗಳಾದ್ಯಂತ '
       + '2,200 ನೈಜ ಕ್ಷೇತ್ರ ಮಾದರಿಗಳ ಮೇಲೆ ತರಬೇತಿ ಪಡೆದ ಮಾದರಿಯೊಂದಿಗೆ ಓದುತ್ತದೆ — ಬಲಭಾಗದ ಪ್ಯಾನಲ್ ಈಗ ಆ ಮಾದರಿಯಿಂದ '
@@ -283,6 +286,7 @@ const I18N = {
     'footer.data_sources': 'डेटा स्रोत: Open-Meteo (हवामान), ब्राउझर GPS + रिव्हर्स जिओकोडिंग (स्थान), '
       + 'खरे प्रकाशित कृषी डेटासेट (पीक/उत्पादन/बाजार मॉडेल), Google Gemini API (चॅटबॉट, कॉन्फिगर केले असल्यास).',
     'common.loading': 'लोड होत आहे…',
+    'notif.panel_title': 'सूचना',
     'home.eyebrow': 'लाइव्ह फील्ड रीडिंग', 'home.welcome': 'परत स्वागत आहे',
     'home.lead': 'कृषी तुमची माती परीक्षण मूल्ये तुमच्या नेमक्या GPS स्थानाच्या लाइव्ह हवामानासोबत आणि 22 '
       + 'पिकांवरील 2,200 खऱ्या क्षेत्र नमुन्यांवर प्रशिक्षित मॉडेलसोबत वाचते — उजवीकडील पॅनेल आत्ता त्याच '
@@ -347,6 +351,7 @@ const I18N = {
     'footer.data_sources': 'தரவு ஆதாரங்கள்: Open-Meteo (வானிலை), உலாவி GPS + ரிவர்ஸ் ஜியோகோடிங் (இடம்), '
       + 'உண்மையான வெளியிடப்பட்ட வேளாண் தரவுத்தொகுப்புகள் (பயிர்/விளைச்சல்/சந்தை மாதிரிகள்), Google Gemini API (சாட்பாட், கட்டமைக்கப்பட்டிருந்தால்).',
     'common.loading': 'ஏற்றுகிறது…',
+    'notif.panel_title': 'எச்சரிக்கைகள்',
     'home.eyebrow': 'நேரடி வயல் அளவீடு', 'home.welcome': 'மீண்டும் வரவேற்கிறோம்',
     'home.lead': 'உங்கள் துல்லியமான GPS இடத்தின் நேரடி வானிலைக்கு எதிராக உங்கள் மண் பரிசோதனை மதிப்புகளையும், '
       + '22 பயிர்களில் 2,200 உண்மையான வயல் மாதிரிகளில் பயிற்சி பெற்ற மாதிரியையும் கிருஷி படிக்கிறது — வலது '
@@ -411,6 +416,7 @@ const I18N = {
     'footer.data_sources': 'డేటా మూలాలు: Open-Meteo (వాతావరణం), బ్రౌజర్ GPS + రివర్స్ జియోకోడింగ్ (స్థానం), '
       + 'నిజమైన ప్రచురిత వ్యవసాయ డేటాసెట్‌లు (పంట/దిగుబడి/మార్కెట్ మోడల్‌లు), Google Gemini API (చాట్‌బాట్, కాన్ఫిగర్ చేసి ఉంటే).',
     'common.loading': 'లోడ్ అవుతోంది…',
+    'notif.panel_title': 'హెచ్చరికలు',
     'home.eyebrow': 'ప్రత్యక్ష క్షేత్ర రీడింగ్', 'home.welcome': 'తిరిగి స్వాగతం',
     'home.lead': 'కృషి మీ మట్టి పరీక్ష విలువలను మీ ఖచ్చితమైన GPS స్థానం యొక్క ప్రత్యక్ష వాతావరణానికి మరియు 22 '
       + 'పంటలలో 2,200 నిజమైన క్షేత్ర నమూనాలపై శిక్షణ పొందిన మోడల్‌కు వ్యతిరేకంగా చదువుతుంది — కుడి వైపు ప్యానెల్ '

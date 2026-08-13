@@ -12,6 +12,8 @@ const val = (id) => { const el = $(id); return el ? el.value : ''; };
 let userCoords = null; // real GPS coords once granted
 let referenceData = null;
 let currentUser = null;
+// escapeHtml() lives in common.js (loaded before this file on every page)
+// so it's usable from both files without a duplicate definition.
 
 // ---------------------------------------------------------------------- //
 // Per-page init functions
@@ -40,8 +42,10 @@ async function loadEmailStatus() {
       badge.textContent = `✓ Email is configured (sending via ${data.host}) — codes will be sent for real.`;
       badge.className = 'location-status ok';
     } else {
-      badge.textContent = '✗ Email is NOT configured — SMTP_* is empty in .env, so codes are shown ' +
-        'on screen instead of emailed. See below to set this up.';
+      badge.textContent = '✗ Email is NOT configured for this running server — SMTP_HOST/PORT/USER/' +
+        'PASSWORD aren\'t all set (or weren\'t at startup). If you just edited .env, restart the ' +
+        'server — env vars are only read once, at startup, so editing .env alone does not apply. ' +
+        'Run `python scripts/test_email.py you@example.com` to see exactly which var is missing.';
       badge.className = 'location-status warn';
     }
   } catch (e) {
@@ -457,7 +461,7 @@ async function loadAdminUsers() {
     $('admin-users').innerHTML = `
       <p class="hint">${data.stats.total_users} registered farmers · ${data.stats.total_recommendations_generated} recommendations generated</p>
       <table class="schedule-table"><thead><tr><th>Name</th><th>Email</th><th>Location</th><th>Role</th></tr></thead>
-      <tbody>${data.users.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.location || '—'}</td><td>${u.role}</td></tr>`).join('')}</tbody></table>`;
+      <tbody>${data.users.map(u => `<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.location) || '—'}</td><td>${escapeHtml(u.role)}</td></tr>`).join('')}</tbody></table>`;
   } catch (e) { /* not admin or request failed */ }
 }
 
@@ -1398,39 +1402,29 @@ function switchKbTab(tab) {
 }
 
 // ---------------------------------------------------------------------- //
-// Home page notifications widget
+// Home page notifications widget — shares fetch + rendering with the nav
+// bell (common.js: getGpsQueryString, renderNotifItems) so the two never
+// disagree, and this page's own GPS-backed fetch also populates the nav
+// badge/panel instead of leaving them on a stale profile-location fetch.
 // ---------------------------------------------------------------------- //
 async function loadHomeNotifications() {
   const el = $('home-notif-list');
   if (!el) return;
 
-  // Prefer real browser GPS over the profile's free-text location field —
-  // more accurate, and covers users who never filled in a location.
-  let latlon = '';
+  const gps = await getGpsQueryString();
   try {
-    const pos = await new Promise((resolve, reject) => {
-      if (!navigator.geolocation) { reject(); return; }
-      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
-    });
-    latlon = `?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`;
-  } catch (e) { /* no permission / no GPS — falls back to profile location server-side */ }
-
-  try {
-    const res = await fetch(`/api/notifications${latlon}`, { credentials: 'include' });
+    const res = await fetch(`/api/notifications${gps}`, { credentials: 'include' });
     const data = await res.json();
+    const notifications = (data.success && data.notifications) || [];
+
     const badge = $('nav-notif-badge');
-    if (badge && data.success && data.notifications.length) {
-      badge.textContent = `${data.notifications.length} alert${data.notifications.length !== 1 ? 's' : ''}`;
-      badge.style.display = 'inline-block';
-    }
-    if (!data.success || !data.notifications.length) {
-      el.innerHTML = '<p class="notif-empty">Nothing needs attention right now — build a crop calendar to get fertilizer/harvest reminders, and make sure your location is set (rain/disease-risk alerts need it).</p>';
-      return;
-    }
-    const icons = { rain: '🌧️', fertilizer: '🚜', harvest: '🌾', disease_risk: '🐛', disease_alert: '🐛' };
-    el.innerHTML = data.notifications.map(n => `
-      <div class="notif-item"><span class="icon">${icons[n.type] || '🔔'}</span>
-      <div><div class="title">${n.title}</div><div class="msg">${n.message}</div></div></div>`).join('');
+    const wrap = $('notif-wrap');
+    const panelList = $('notif-panel-list');
+    if (wrap) wrap.style.display = 'inline-flex';
+    if (badge) badge.textContent = notifications.length ? String(notifications.length) : '';
+    if (panelList) panelList.innerHTML = renderNotifItems(notifications);
+
+    el.innerHTML = renderNotifItems(notifications);
   } catch (e) {
     el.innerHTML = '<p class="notif-empty">Could not load notifications.</p>';
   }
@@ -1537,7 +1531,7 @@ function renderFarmRecords(records) {
     if (!el) return;
     const tbody = el.querySelector('tbody');
     if (!rows.length) { tbody.innerHTML = '<tr><td class="not-available">No records yet.</td></tr>'; return; }
-    tbody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('')}</tr>`).join('');
+    tbody.innerHTML = rows.map(r => `<tr>${cols.map(c => `<td>${escapeHtml(r[c] ?? '—')}</td>`).join('')}</tr>`).join('');
   };
   tbl('records-crops', records.crops_grown, ['crop', 'sowing_date', 'harvest_date']);
   tbl('records-yield', records.yield_history, ['crop', 'area_acres', 'predicted_yield_tonnes', 'created_at']);
@@ -1566,7 +1560,7 @@ function renderEditableTable(tableId, rows, type, cols) {
     return;
   }
   tbody.innerHTML = rows.map(r => `<tr>
-    ${cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('')}
+    ${cols.map(c => `<td>${escapeHtml(r[c] ?? '—')}</td>`).join('')}
     <td class="col-actions">
       <button type="button" class="row-action-btn" onclick="openRecordEditModal('${type}', ${r.id})">Edit</button>
       <button type="button" class="row-action-btn danger" onclick="deleteFarmRecord('${type}', ${r.id})">Delete</button>
@@ -1592,18 +1586,18 @@ function openRecordEditModal(type, id) {
           ${['seeds', 'fertilizer', 'labour', 'water', 'pesticides', 'other']
             .map(c => `<option value="${c}" ${record.category === c ? 'selected' : ''}>${c}</option>`).join('')}
         </select></div>
-      <div class="field"><label for="em-amount">Amount (₹)</label><input type="number" id="em-amount" value="${record.amount_rs}"></div>
-      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${record.crop ?? ''}"></div>`;
+      <div class="field"><label for="em-amount">Amount (₹)</label><input type="number" id="em-amount" value="${escapeHtml(record.amount_rs)}"></div>
+      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${escapeHtml(record.crop ?? '')}"></div>`;
   } else if (type === 'income') {
     html = `
-      <div class="field"><label for="em-amount">Amount (₹)</label><input type="number" id="em-amount" value="${record.amount_rs}"></div>
-      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${record.crop ?? ''}"></div>`;
+      <div class="field"><label for="em-amount">Amount (₹)</label><input type="number" id="em-amount" value="${escapeHtml(record.amount_rs)}"></div>
+      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${escapeHtml(record.crop ?? '')}"></div>`;
   } else {
     html = `
-      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${record.crop ?? ''}"></div>
-      <div class="field"><label for="em-fertilizer">Fertilizer</label><input type="text" id="em-fertilizer" value="${record.fertilizer ?? ''}"></div>
-      <div class="field"><label for="em-quantity">Quantity (kg)</label><input type="number" id="em-quantity" value="${record.quantity_kg ?? ''}"></div>
-      <div class="field"><label for="em-date">Date applied</label><input type="date" id="em-date" value="${record.applied_on ?? ''}"></div>`;
+      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${escapeHtml(record.crop ?? '')}"></div>
+      <div class="field"><label for="em-fertilizer">Fertilizer</label><input type="text" id="em-fertilizer" value="${escapeHtml(record.fertilizer ?? '')}"></div>
+      <div class="field"><label for="em-quantity">Quantity (kg)</label><input type="number" id="em-quantity" value="${escapeHtml(record.quantity_kg ?? '')}"></div>
+      <div class="field"><label for="em-date">Date applied</label><input type="date" id="em-date" value="${escapeHtml(record.applied_on ?? '')}"></div>`;
   }
   fieldsEl.innerHTML = html;
   $('edit-modal-title').textContent = `Edit ${type === 'fertilizer' ? 'fertilizer usage' : type}`;
@@ -1727,7 +1721,7 @@ async function loadAdminTab(tab) {
     const res = await fetch('/api/admin/users', { credentials: 'include' });
     const data = await res.json();
     el.innerHTML = `<table class="schedule-table"><thead><tr><th>Name</th><th>Email</th><th>Location</th><th>Role</th><th>Joined</th></tr></thead>
-      <tbody>${data.users.map(u => `<tr><td>${u.name}</td><td>${u.email}</td><td>${u.location || '—'}</td><td>${u.role}</td><td>${u.created_at.slice(0, 10)}</td></tr>`).join('')}</tbody></table>`;
+      <tbody>${data.users.map(u => `<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.location) || '—'}</td><td>${escapeHtml(u.role)}</td><td>${escapeHtml(u.created_at.slice(0, 10))}</td></tr>`).join('')}</tbody></table>`;
   } else if (tab === 'crops') {
     const res = await fetch('/api/admin/crops', { credentials: 'include' });
     const data = await res.json();

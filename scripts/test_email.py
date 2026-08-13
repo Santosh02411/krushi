@@ -18,11 +18,34 @@ the server is running has no effect until you restart it).
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
 
 from dotenv import load_dotenv  # noqa: E402
 
-load_dotenv()
+# Explicit path, matching app.py — removes any ambiguity about which .env
+# gets read regardless of the directory this script is run from.
+_env_path = os.path.join(PROJECT_ROOT, ".env")
+if not os.path.exists(_env_path):
+    print(f"❌ No .env file found at {_env_path} — create one (copy .env.example to .env) first.")
+    sys.exit(1)
+print(f"Reading {_env_path}")
+
+# Catches the single most common real-world mistake: pasting an entire
+# ```dotenv ... ``` markdown code block (fences included) straight from a
+# chat/README into .env instead of just the KEY=VALUE lines. A stray
+# backtick line doesn't crash dotenv, but it silently breaks parsing of
+# whatever follows it depending on the parser version, and the resulting
+# "not configured" error gives no hint that this was the cause.
+with open(_env_path, encoding="utf-8") as _f:
+    _raw_lines = _f.readlines()
+_fence_lines = [i + 1 for i, line in enumerate(_raw_lines) if line.strip().startswith("```")]
+if _fence_lines:
+    print(f"⚠️  Found markdown code-fence line(s) (```) at line(s) {_fence_lines} in .env — "
+          f"if you pasted an example block that included the ``` lines, delete those two lines "
+          f"and keep only the KEY=VALUE lines themselves.")
+
+load_dotenv(_env_path)
 
 import auth  # noqa: E402
 
@@ -54,7 +77,13 @@ def main():
     print(f"   SMTP_HOST={host}")
     print(f"   SMTP_PORT={port}")
     print(f"   SMTP_USER={user}")
-    print(f"   SMTP_PASSWORD={'*' * len(password)} ({len(password)} characters)")
+    print(f"   SMTP_PASSWORD={'*' * len(password)} ({len(password)} characters"
+          f"{', contains spaces' if ' ' in password else ''})")
+    if " " in password and len(password.replace(" ", "")) == 16:
+        print("   ⚠️  Your password has spaces and is 16 characters without them — this looks like a")
+        print("      Gmail App Password copied straight from Google's site with its display spacing")
+        print("      (\"xxxx xxxx xxxx xxxx\") kept in. This usually still works, but if the send below")
+        print("      fails with an auth error, try removing the spaces in .env and re-running this.")
     print(f"\nSending a test email to {to_email}...")
 
     result = auth.send_email(

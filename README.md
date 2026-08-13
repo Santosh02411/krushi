@@ -381,7 +381,9 @@ bug; it's fixed). Admin accounts are created only via
 ## Tech stack
 
 - **Backend**: Flask, session-based auth (`werkzeug.security` password
-  hashing, no plaintext storage)
+  hashing, no plaintext storage), Flask-Limiter (rate limiting on
+  login/register/password-reset/chat), CORS locked to an explicit origin
+  allowlist (`ALLOWED_ORIGINS` in `.env`)
 - **ML**: scikit-learn (3 RandomForest models)
 - **Frontend**: HTML / CSS / vanilla JavaScript, browser Geolocation API,
   Chart.js (dashboard charts), Leaflet.js + OpenStreetMap (farm map, both
@@ -390,16 +392,34 @@ bug; it's fixed). Admin accounts are created only via
   `expenses`, `income`, `soil_health_logs`, `water_usage_logs`, `yield_logs`)
 - **External APIs**: Open-Meteo (weather), a free reverse-geocoding API
   (location), ip-api.com (fallback location), data.gov.in (optional live
-  market data)
+  market data), Google Gemini (optional chat)
+
+## Before deploying anywhere reachable outside your own machine
+
+- Set `SECRET_KEY` in `.env` to a real random value (`python -c "import
+  secrets; print(secrets.token_hex(32))"`). Without it the app still
+  boots (with a per-process random key, so it doesn't fail closed on new
+  contributors), but sessions won't survive a restart and it's unsafe for
+  more than one worker process.
+- Set `ALLOWED_ORIGINS` in `.env` to your real domain(s) — it defaults to
+  `localhost` only.
+- Set `COOKIE_SECURE=1` once you're behind HTTPS.
+- Leave `FLASK_DEBUG` unset/`0` — Flask's debug mode exposes an
+  interactive in-browser debugger that allows arbitrary code execution if
+  left on for anything public.
+- Run behind gunicorn (already in `requirements.txt`), not `python app.py`.
 
 ## Not in this build yet
 
-This was the last batch of the original 22-feature list. What's still not
-genuinely real, by design: AI disease detection from photos (needs a
-trained CV model that actually installs — see above), translated UI
-strings for the 6 supported languages (the language *preference* is
-stored on the profile; the UI itself is still English-only), farm records
-editing/deletion (records can be added but not yet edited/removed from
-the UI), and real external agri news (the "News" feature is an internal
-admin-posted announcements board, not a live news feed, since there's no
-search tool in this build to source and verify real articles).
+Translated UI strings cover navigation, footer, the home page, and every
+page's heading in Hindi/Kannada/Marathi/Tamil/Telugu/English (backed by a
+`data-i18n`-attribute system, `static/js/i18n.js`) — but body copy, form
+labels, and JS-rendered results on most individual tool pages are still
+English-only. AI disease detection from photos still isn't real (needs a
+trained CV model that actually installs — see above); the "News" feature
+is an internal admin-posted announcements board, not a live external news
+feed, since there's no search tool in this build to source and verify
+real articles. There's no automated test suite yet beyond
+`scripts/test_email.py`, and the three RandomForest models retrain from
+scratch on every app restart rather than being cached to disk.
+
