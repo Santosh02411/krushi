@@ -190,6 +190,71 @@ def add_fertilizer_usage(user_id, crop, fertilizer, quantity_kg, applied_on=None
     conn.close()
 
 
+def update_expense(user_id, record_id, category, amount_rs, crop=None, note=None):
+    """Only touches the row if it belongs to user_id — returns True if a row was updated."""
+    conn = get_db()
+    cur = conn.execute(
+        "UPDATE expenses SET category = ?, amount_rs = ?, crop = ?, note = ? WHERE id = ? AND user_id = ?",
+        (category, amount_rs, crop, note, record_id, user_id),
+    )
+    conn.commit()
+    updated = cur.rowcount > 0
+    conn.close()
+    return updated
+
+
+def delete_expense(user_id, record_id):
+    conn = get_db()
+    cur = conn.execute("DELETE FROM expenses WHERE id = ? AND user_id = ?", (record_id, user_id))
+    conn.commit()
+    deleted = cur.rowcount > 0
+    conn.close()
+    return deleted
+
+
+def update_income(user_id, record_id, amount_rs, crop=None, note=None):
+    conn = get_db()
+    cur = conn.execute(
+        "UPDATE income SET amount_rs = ?, crop = ?, note = ? WHERE id = ? AND user_id = ?",
+        (amount_rs, crop, note, record_id, user_id),
+    )
+    conn.commit()
+    updated = cur.rowcount > 0
+    conn.close()
+    return updated
+
+
+def delete_income(user_id, record_id):
+    conn = get_db()
+    cur = conn.execute("DELETE FROM income WHERE id = ? AND user_id = ?", (record_id, user_id))
+    conn.commit()
+    deleted = cur.rowcount > 0
+    conn.close()
+    return deleted
+
+
+def update_fertilizer_usage(user_id, record_id, crop, fertilizer, quantity_kg, applied_on=None, note=None):
+    conn = get_db()
+    cur = conn.execute(
+        "UPDATE fertilizer_usage_logs SET crop = ?, fertilizer = ?, quantity_kg = ?, applied_on = ?, note = ? "
+        "WHERE id = ? AND user_id = ?",
+        (crop, fertilizer, quantity_kg, applied_on, note, record_id, user_id),
+    )
+    conn.commit()
+    updated = cur.rowcount > 0
+    conn.close()
+    return updated
+
+
+def delete_fertilizer_usage(user_id, record_id):
+    conn = get_db()
+    cur = conn.execute("DELETE FROM fertilizer_usage_logs WHERE id = ? AND user_id = ?", (record_id, user_id))
+    conn.commit()
+    deleted = cur.rowcount > 0
+    conn.close()
+    return deleted
+
+
 def _rows(user_id, table, limit=50):
     conn = get_db()
     rows = conn.execute(f"SELECT * FROM {table} WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",

@@ -23,10 +23,20 @@ CROP_DURATION_DAYS = {
     "rice": 130, "wheat": 120, "maize": 95, "cotton": 165, "chickpea": 105,
     "lentil": 105, "pigeonpeas": 165, "mothbeans": 70, "mungbean": 65,
     "blackgram": 80, "jute": 110, "watermelon": 85, "muskmelon": 85,
+    # Additional annual/seasonal crops (typical published duration figures —
+    # actual timing shifts with variety, region, and season):
+    "bajra": 80, "barley": 130, "castor": 165, "coriander": 100, "cowpea": 70,
+    "chilli": 165, "garlic": 160, "ginger": 225, "groundnut": 110, "guar": 95,
+    "horsegram": 105, "jowar": 110, "khesari": 120, "linseed": 120, "mesta": 135,
+    "niger": 100, "onion": 140, "potato": 100, "ragi": 120, "mustard": 125,
+    "safflower": 135, "sunnhemp": 100, "sesame": 90, "small millets": 85,
+    "soybean": 100, "sugarcane": 365, "sunflower": 90, "sweet potato": 100,
+    "tapioca": 270, "tobacco": 130, "turmeric": 240,
 }
 
 PERENNIAL_CROPS = {"banana", "mango", "grapes", "apple", "orange", "papaya",
-                    "coconut", "coffee", "pomegranate"}
+                    "coconut", "coffee", "pomegranate", "arecanut", "black pepper",
+                    "cardamom", "cashewnut"}
 
 # Rough day-in-stage parser for the fertilizer schedule's "stage" labels
 # (e.g. "Tillering (~25-30 days)") -> a representative day offset from sowing.

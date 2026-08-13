@@ -175,6 +175,9 @@ function initChatPage() {
 
 function initRecordsPage() {
   $('add-fertilizer-usage-btn').addEventListener('click', addFertilizerUsage);
+  $('edit-modal-cancel').addEventListener('click', closeRecordEditModal);
+  $('edit-modal-save').addEventListener('click', saveRecordEdit);
+  $('edit-modal-overlay').addEventListener('click', (e) => { if (e.target.id === 'edit-modal-overlay') closeRecordEditModal(); });
   loadFarmRecords();
 }
 
@@ -1400,8 +1403,20 @@ function switchKbTab(tab) {
 async function loadHomeNotifications() {
   const el = $('home-notif-list');
   if (!el) return;
+
+  // Prefer real browser GPS over the profile's free-text location field —
+  // more accurate, and covers users who never filled in a location.
+  let latlon = '';
   try {
-    const res = await fetch('/api/notifications', { credentials: 'include' });
+    const pos = await new Promise((resolve, reject) => {
+      if (!navigator.geolocation) { reject(); return; }
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
+    });
+    latlon = `?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`;
+  } catch (e) { /* no permission / no GPS — falls back to profile location server-side */ }
+
+  try {
+    const res = await fetch(`/api/notifications${latlon}`, { credentials: 'include' });
     const data = await res.json();
     const badge = $('nav-notif-badge');
     if (badge && data.success && data.notifications.length) {
@@ -1409,7 +1424,7 @@ async function loadHomeNotifications() {
       badge.style.display = 'inline-block';
     }
     if (!data.success || !data.notifications.length) {
-      el.innerHTML = '<p class="notif-empty">Nothing needs attention right now — build a crop calendar to get fertilizer/harvest reminders.</p>';
+      el.innerHTML = '<p class="notif-empty">Nothing needs attention right now — build a crop calendar to get fertilizer/harvest reminders, and make sure your location is set (rain/disease-risk alerts need it).</p>';
       return;
     }
     const icons = { rain: '🌧️', fertilizer: '🚜', harvest: '🌾', disease_risk: '🐛', disease_alert: '🐛' };
@@ -1513,7 +1528,10 @@ async function loadFarmRecords() {
   } catch (e) { /* tables stay empty */ }
 }
 
+let lastFarmRecords = null;
+
 function renderFarmRecords(records) {
+  lastFarmRecords = records;
   const tbl = (id, rows, cols) => {
     const el = $(id);
     if (!el) return;
@@ -1523,9 +1541,117 @@ function renderFarmRecords(records) {
   };
   tbl('records-crops', records.crops_grown, ['crop', 'sowing_date', 'harvest_date']);
   tbl('records-yield', records.yield_history, ['crop', 'area_acres', 'predicted_yield_tonnes', 'created_at']);
-  tbl('records-fertilizer', records.fertilizer_usage, ['crop', 'fertilizer', 'quantity_kg', 'applied_on']);
-  tbl('records-expenses', records.expenses, ['category', 'amount_rs', 'crop', 'created_at']);
-  tbl('records-income', records.income, ['amount_rs', 'crop', 'created_at']);
+  renderEditableTable('records-fertilizer', records.fertilizer_usage, 'fertilizer',
+    ['crop', 'fertilizer', 'quantity_kg', 'applied_on']);
+  renderEditableTable('records-expenses', records.expenses, 'expense',
+    ['category', 'amount_rs', 'crop', 'created_at']);
+  renderEditableTable('records-income', records.income, 'income',
+    ['amount_rs', 'crop', 'created_at']);
+}
+
+// ---------------------------------------------------------------------- //
+// Editable farm-record tables (expenses, income, fertilizer usage) —
+// each row gets Edit/Delete buttons wired to the record's real id.
+// ---------------------------------------------------------------------- //
+const RECORD_ENDPOINTS = {
+  expense: '/api/farm/expense', income: '/api/farm/income', fertilizer: '/api/farm/fertilizer-usage',
+};
+
+function renderEditableTable(tableId, rows, type, cols) {
+  const el = $(tableId);
+  if (!el) return;
+  const tbody = el.querySelector('tbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td class="not-available" colspan="${cols.length + 1}">No records yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr>
+    ${cols.map(c => `<td>${r[c] ?? '—'}</td>`).join('')}
+    <td class="col-actions">
+      <button type="button" class="row-action-btn" onclick="openRecordEditModal('${type}', ${r.id})">Edit</button>
+      <button type="button" class="row-action-btn danger" onclick="deleteFarmRecord('${type}', ${r.id})">Delete</button>
+    </td>
+  </tr>`).join('');
+}
+
+function findRecord(type, id) {
+  if (!lastFarmRecords) return null;
+  const key = type === 'expense' ? 'expenses' : type === 'income' ? 'income' : 'fertilizer_usage';
+  return (lastFarmRecords[key] || []).find(r => r.id === id) || null;
+}
+
+function openRecordEditModal(type, id) {
+  const record = findRecord(type, id);
+  if (!record) return;
+  const fieldsEl = $('edit-modal-fields');
+  let html = '';
+  if (type === 'expense') {
+    html = `
+      <div class="field"><label for="em-category">Category</label>
+        <select id="em-category">
+          ${['seeds', 'fertilizer', 'labour', 'water', 'pesticides', 'other']
+            .map(c => `<option value="${c}" ${record.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+        </select></div>
+      <div class="field"><label for="em-amount">Amount (₹)</label><input type="number" id="em-amount" value="${record.amount_rs}"></div>
+      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${record.crop ?? ''}"></div>`;
+  } else if (type === 'income') {
+    html = `
+      <div class="field"><label for="em-amount">Amount (₹)</label><input type="number" id="em-amount" value="${record.amount_rs}"></div>
+      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${record.crop ?? ''}"></div>`;
+  } else {
+    html = `
+      <div class="field"><label for="em-crop">Crop</label><input type="text" id="em-crop" value="${record.crop ?? ''}"></div>
+      <div class="field"><label for="em-fertilizer">Fertilizer</label><input type="text" id="em-fertilizer" value="${record.fertilizer ?? ''}"></div>
+      <div class="field"><label for="em-quantity">Quantity (kg)</label><input type="number" id="em-quantity" value="${record.quantity_kg ?? ''}"></div>
+      <div class="field"><label for="em-date">Date applied</label><input type="date" id="em-date" value="${record.applied_on ?? ''}"></div>`;
+  }
+  fieldsEl.innerHTML = html;
+  $('edit-modal-title').textContent = `Edit ${type === 'fertilizer' ? 'fertilizer usage' : type}`;
+  $('edit-modal-overlay').dataset.type = type;
+  $('edit-modal-overlay').dataset.id = id;
+  $('edit-modal-overlay').style.display = 'flex';
+}
+
+function closeRecordEditModal() {
+  $('edit-modal-overlay').style.display = 'none';
+}
+
+async function saveRecordEdit() {
+  const overlay = $('edit-modal-overlay');
+  const type = overlay.dataset.type;
+  const id = overlay.dataset.id;
+  let payload = {};
+  if (type === 'expense') {
+    payload = {
+      category: $('em-category').value, amount_rs: parseFloat($('em-amount').value) || 0,
+      crop: $('em-crop').value.trim() || null,
+    };
+  } else if (type === 'income') {
+    payload = { amount_rs: parseFloat($('em-amount').value) || 0, crop: $('em-crop').value.trim() || null };
+  } else {
+    payload = {
+      crop: $('em-crop').value.trim() || null, fertilizer: $('em-fertilizer').value.trim(),
+      quantity_kg: parseFloat($('em-quantity').value) || null, applied_on: $('em-date').value || null,
+    };
+  }
+  try {
+    await fetch(`${RECORD_ENDPOINTS[type]}/${id}`, {
+      method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) { /* fall through to refresh anyway */ }
+  closeRecordEditModal();
+  loadFarmRecords();
+  if (typeof loadDashboard === 'function' && $('dashboard-content')) loadDashboard();
+}
+
+async function deleteFarmRecord(type, id) {
+  if (!confirm('Delete this record? This cannot be undone.')) return;
+  try {
+    await fetch(`${RECORD_ENDPOINTS[type]}/${id}`, { method: 'DELETE', credentials: 'include' });
+  } catch (e) { /* fall through to refresh anyway */ }
+  loadFarmRecords();
+  if (typeof loadDashboard === 'function' && $('dashboard-content')) loadDashboard();
 }
 
 // ---------------------------------------------------------------------- //

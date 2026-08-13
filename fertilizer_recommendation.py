@@ -14,7 +14,12 @@ and subsidy changes over time. This is general guidance, not a substitute
 for a local input dealer's current price list.
 
 Coverage: the crops with an established standard N-P-K package-of-practices
-figure. Anything else returns covered=False rather than a guessed number.
+figure — 36 crops as of this version. Anything else returns covered=False
+rather than a guessed number. Long-duration plantation/spice crops (arecanut,
+cardamom, black pepper, cashewnut) are deliberately left out even though
+they're covered elsewhere in the app (yield model, crop calendar) — their
+real-world fertilizer programs are multi-year and variety/spacing-dependent
+in a way a single per-acre figure would misrepresent.
 """
 
 # Approx representative retail price per 50kg bag (Rs.) — general reference,
@@ -118,6 +123,212 @@ CROP_FERTILIZER_PLAN = {
                       {"stage": "Vining stage (~25-30 days)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
                       {"stage": "Vining stage (~25-30 days)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
                   ]},
+    # Additional crops — standard published package-of-practices N-P-K
+    # doses (ICAR / state agricultural university figures, converted
+    # kg/ha -> kg/acre), same approximate-cost caveat as above.
+    "groundnut": {"n_kg_acre": 8, "p_kg_acre": 16, "k_kg_acre": 0,
+                  "schedule": [
+                      {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                      {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                  ]},
+    "soybean": {"n_kg_acre": 8, "p_kg_acre": 24, "k_kg_acre": 8,
+                "schedule": [
+                    {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                    {"stage": "Basal (at sowing)", "fertilizer": "MOP", "share": 1.0, "of": "K"},
+                    {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                ]},
+    "sunflower": {"n_kg_acre": 24, "p_kg_acre": 12, "k_kg_acre": 12,
+                  "schedule": [
+                      {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                      {"stage": "Basal (at sowing)", "fertilizer": "MOP", "share": 1.0, "of": "K"},
+                      {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                      {"stage": "Budding stage (~30-35 days)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                  ]},
+    "mustard": {"n_kg_acre": 32, "p_kg_acre": 16, "k_kg_acre": 16,
+                "schedule": [
+                    {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                    {"stage": "Basal (at sowing)", "fertilizer": "MOP", "share": 1.0, "of": "K"},
+                    {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                    {"stage": "First irrigation (~25-30 days)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                ]},
+    "sugarcane": {"n_kg_acre": 112, "p_kg_acre": 36, "k_kg_acre": 56,
+                  "schedule": [
+                      {"stage": "Basal (at planting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                      {"stage": "Basal (at planting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                      {"stage": "Basal (at planting)", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                      {"stage": "Tillering (~45-60 days)", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                      {"stage": "Grand growth (~90-120 days)", "fertilizer": "Urea", "share": 0.34, "of": "N"},
+                      {"stage": "Grand growth (~90-120 days)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                  ]},
+    "onion": {"n_kg_acre": 40, "p_kg_acre": 20, "k_kg_acre": 20,
+              "schedule": [
+                  {"stage": "Basal (at transplanting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                  {"stage": "Basal (at transplanting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                  {"stage": "Basal (at transplanting)", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                  {"stage": "~30 days after transplanting", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                  {"stage": "Bulb formation (~60 days)", "fertilizer": "Urea", "share": 0.34, "of": "N"},
+                  {"stage": "Bulb formation (~60 days)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+              ]},
+    "potato": {"n_kg_acre": 48, "p_kg_acre": 32, "k_kg_acre": 40,
+               "schedule": [
+                   {"stage": "Basal (at planting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                   {"stage": "Basal (at planting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                   {"stage": "Basal (at planting)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                   {"stage": "Earthing-up (~30 days)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                   {"stage": "Earthing-up (~30 days)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+               ]},
+    "sesame": {"n_kg_acre": 16, "p_kg_acre": 8, "k_kg_acre": 0,
+               "schedule": [
+                   {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                   {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+               ]},
+    "bajra": {"n_kg_acre": 20, "p_kg_acre": 8, "k_kg_acre": 0,
+              "schedule": [
+                  {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                  {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                  {"stage": "Tillering (~25-30 days)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+              ]},
+    "jowar": {"n_kg_acre": 32, "p_kg_acre": 16, "k_kg_acre": 0,
+              "schedule": [
+                  {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                  {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                  {"stage": "Tillering (~25-30 days)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+              ]},
+    "ragi": {"n_kg_acre": 18, "p_kg_acre": 8, "k_kg_acre": 0,
+             "schedule": [
+                 {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                 {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                 {"stage": "Tillering (~25-30 days)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+             ]},
+    "barley": {"n_kg_acre": 24, "p_kg_acre": 12, "k_kg_acre": 0,
+               "schedule": [
+                   {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                   {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                   {"stage": "First irrigation (~20-25 days)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+               ]},
+    "castor": {"n_kg_acre": 24, "p_kg_acre": 8, "k_kg_acre": 8,
+               "schedule": [
+                   {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                   {"stage": "Basal (at sowing)", "fertilizer": "MOP", "share": 1.0, "of": "K"},
+                   {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                   {"stage": "~30-40 days after sowing", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+               ]},
+    "turmeric": {"n_kg_acre": 24, "p_kg_acre": 20, "k_kg_acre": 48,
+                 "schedule": [
+                     {"stage": "Basal (at planting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                     {"stage": "Basal (at planting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                     {"stage": "Basal (at planting)", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                     {"stage": "~90 days after planting", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                     {"stage": "Rhizome development (~135 days)", "fertilizer": "Urea", "share": 0.34, "of": "N"},
+                     {"stage": "Rhizome development (~135 days)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                 ]},
+    "ginger": {"n_kg_acre": 30, "p_kg_acre": 20, "k_kg_acre": 20,
+               "schedule": [
+                   {"stage": "Basal (at planting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                   {"stage": "Basal (at planting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                   {"stage": "Basal (at planting)", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                   {"stage": "~60 days after planting", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                   {"stage": "Rhizome development (~90 days)", "fertilizer": "Urea", "share": 0.34, "of": "N"},
+                   {"stage": "Rhizome development (~90 days)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+               ]},
+    "garlic": {"n_kg_acre": 40, "p_kg_acre": 20, "k_kg_acre": 20,
+               "schedule": [
+                   {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                   {"stage": "Basal (at sowing)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                   {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                   {"stage": "~30-45 days after sowing", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                   {"stage": "~30-45 days after sowing", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+               ]},
+    "chilli": {"n_kg_acre": 40, "p_kg_acre": 20, "k_kg_acre": 20,
+               "schedule": [
+                   {"stage": "Basal (at transplanting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                   {"stage": "Basal (at transplanting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                   {"stage": "Basal (at transplanting)", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                   {"stage": "~30 days after transplanting", "fertilizer": "Urea", "share": 0.33, "of": "N"},
+                   {"stage": "Flowering (~60 days)", "fertilizer": "Urea", "share": 0.34, "of": "N"},
+                   {"stage": "Flowering (~60 days)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+               ]},
+    "sweet potato": {"n_kg_acre": 20, "p_kg_acre": 10, "k_kg_acre": 20,
+                     "schedule": [
+                         {"stage": "Basal (at planting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                         {"stage": "Basal (at planting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                         {"stage": "Basal (at planting)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                         {"stage": "~30 days after planting", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                         {"stage": "~30 days after planting", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                     ]},
+    "tobacco": {"n_kg_acre": 20, "p_kg_acre": 20, "k_kg_acre": 40,
+                "schedule": [
+                    {"stage": "Basal (at transplanting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                    {"stage": "Basal (at transplanting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                    {"stage": "Basal (at transplanting)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                    {"stage": "~30 days after transplanting", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                    {"stage": "~30 days after transplanting", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                ]},
+    "coriander": {"n_kg_acre": 16, "p_kg_acre": 8, "k_kg_acre": 0,
+                  "schedule": [
+                      {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                      {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                  ]},
+    "safflower": {"n_kg_acre": 16, "p_kg_acre": 8, "k_kg_acre": 0,
+                  "schedule": [
+                      {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                      {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                  ]},
+    "linseed": {"n_kg_acre": 16, "p_kg_acre": 8, "k_kg_acre": 0,
+                "schedule": [
+                    {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                    {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                ]},
+    "niger": {"n_kg_acre": 8, "p_kg_acre": 8, "k_kg_acre": 0,
+              "schedule": [
+                  {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                  {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+              ]},
+    "guar": {"n_kg_acre": 8, "p_kg_acre": 16, "k_kg_acre": 0,
+             "schedule": [
+                 {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                 {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+             ]},
+    "cowpea": {"n_kg_acre": 8, "p_kg_acre": 16, "k_kg_acre": 0,
+               "schedule": [
+                   {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                   {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+               ]},
+    "horsegram": {"n_kg_acre": 4, "p_kg_acre": 8, "k_kg_acre": 0,
+                  "schedule": [
+                      {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                      {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                  ]},
+    "khesari": {"n_kg_acre": 6, "p_kg_acre": 8, "k_kg_acre": 0,
+                "schedule": [
+                    {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                    {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                ]},
+    "sunnhemp": {"n_kg_acre": 4, "p_kg_acre": 8, "k_kg_acre": 0,
+                 "schedule": [
+                     {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                     {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                 ]},
+    "mesta": {"n_kg_acre": 24, "p_kg_acre": 8, "k_kg_acre": 8,
+              "schedule": [
+                  {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                  {"stage": "Basal (at sowing)", "fertilizer": "MOP", "share": 1.0, "of": "K"},
+                  {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                  {"stage": "~30 days after sowing", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+              ]},
+    "small millets": {"n_kg_acre": 8, "p_kg_acre": 8, "k_kg_acre": 0,
+                      "schedule": [
+                          {"stage": "Basal (at sowing)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                          {"stage": "Basal (at sowing)", "fertilizer": "Urea", "share": 1.0, "of": "N"},
+                      ]},
+    "tapioca": {"n_kg_acre": 40, "p_kg_acre": 20, "k_kg_acre": 40,
+                "schedule": [
+                    {"stage": "Basal (at planting)", "fertilizer": "DAP", "share": 1.0, "of": "P"},
+                    {"stage": "Basal (at planting)", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                    {"stage": "Basal (at planting)", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                    {"stage": "~60 days after planting", "fertilizer": "Urea", "share": 0.5, "of": "N"},
+                    {"stage": "~60 days after planting", "fertilizer": "MOP", "share": 0.5, "of": "K"},
+                ]},
 }
 
 

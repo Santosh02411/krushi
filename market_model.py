@@ -40,6 +40,22 @@ LEAK_COLS = ["Min Price (Rs./Quintal)", "Max Price (Rs./Quintal)"]
 
 CROP_COLUMNS = {"potato": "Crop_Potato", "tomato": "Crop_Tomato", "wheat": "Crop_Wheat"}
 
+# Crops with real Agmarknet records (pulled live from data.gov.in's official
+# mandi-price feed, same source as the trained dataset above) but only a
+# handful of records each — nowhere near enough to train/test-split a
+# regression the way potato/tomato/wheat are. Rather than either omitting
+# them or quietly training a RandomForest on 1-2 rows, get_price_estimate()
+# treats these as a second, explicitly-labeled tier: a real observed
+# median/range, not an ML prediction. get_market_prices() and
+# get_nearby_markets() need no separate handling — they already read
+# straight from market_prices_by_location.csv, so adding rows there is
+# what actually extends those two.
+SNAPSHOT_CROPS = {
+    "onion": "Onion", "gram": "Gram", "cucumber": "Cucumber", "brinjal": "Brinjal",
+    "cluster beans": "Cluster Beans", "bottle gourd": "Bottle Gourd", "amaranthus": "Amaranthus",
+    "carrot": "Carrot", "snake gourd": "Snake Gourd", "lemon": "Lemon",
+}
+
 # Real coordinates for the markets present in data/market_prices_by_location.csv.
 # These are fixed, well-known towns, so they're hardcoded rather than geocoded
 # on every request. A couple of small/ambiguous town names are deliberately
@@ -50,10 +66,11 @@ MARKET_COORDS = {
     "Lakshar": (29.77, 78.03), "Ludhiana": (30.90, 75.86), "Mawana": (29.10, 77.93),
     "Meerut": (28.98, 77.71), "Muzzafarnagar": (29.47, 77.70), "Pataudi": (28.31, 76.77),
     "Rayya": (31.80, 75.13), "Roorkee": (29.85, 77.89), "Sardhana": (29.15, 77.61),
-    "Sohna": (28.25, 77.07),
-    # "Mehta" and "Shahpur" omitted — town name is ambiguous without a
-    # reliable source, so distance to them is reported as unknown rather
-    # than guessed.
+    "Sohna": (28.25, 77.07), "Baripada APMC": (21.93, 86.73),
+    "Tiruppur (South) (Uzhavar Sandhai)": (11.11, 77.34),
+    # "Mehta", "Shahpur" and "Maddipadu APMC" omitted — town name/location is
+    # ambiguous without a reliable source, so distance to them is reported
+    # as unknown rather than guessed.
 }
 
 
@@ -102,23 +119,29 @@ class MarketPriceModel:
         return {
             "algorithm": "RandomForestRegressor (scikit-learn)",
             "training_records": len(self.df),
-            "covered_crops": self.covered_crops,
+            "covered_crops": self.covered_crops + list(SNAPSHOT_CROPS.keys()),
+            "ml_predicted_crops": self.covered_crops,
+            "snapshot_crops": list(SNAPSHOT_CROPS.keys()),
             "test_r2": self.test_r2,
             "test_mae_rs_per_quintal": self.test_mae,
             "dataset": "Real Agmarknet-sourced mandi price data (data/market_price_data.csv), "
                        "Haryana/Punjab/Uttar Pradesh/Uttarakhand",
             "honesty_note": "Predicts price from crop/location/arrivals only (not from that day's "
                              "min/max), so accuracy is moderate — price also depends on factors this "
-                             "dataset doesn't capture (weather shocks, festival demand, transport cost).",
+                             "dataset doesn't capture (weather shocks, festival demand, transport cost). "
+                             "Snapshot crops (onion, gram, etc.) show a real observed median/range from "
+                             "a handful of live Agmarknet records rather than an ML prediction — too few "
+                             "samples to train and honestly test a model on.",
         }
 
     def is_covered(self, crop):
-        return (crop or "").strip().lower() in CROP_COLUMNS
+        crop_key = (crop or "").strip().lower()
+        return crop_key in CROP_COLUMNS or crop_key in SNAPSHOT_CROPS
 
     def get_price_estimate(self, crop, state=None):
         crop_key = (crop or "").strip().lower()
         if crop_key not in CROP_COLUMNS:
-            return {"covered": False}
+            return self._get_snapshot_estimate(crop_key, state=state)
 
         # Build a representative feature row: average arrivals for this crop,
         # and the state one-hot if we recognize it (else the most common state
@@ -161,14 +184,47 @@ class MarketPriceModel:
             "data_source": "real (Agmarknet mandi records, ML-predicted)",
         }
 
+    def _get_snapshot_estimate(self, crop_key, state=None):
+        """Real-record-only estimate for SNAPSHOT_CROPS — an observed median
+        and range straight from market_prices_by_location.csv, no model
+        involved. Honestly labeled as such rather than dressed up as an
+        ML prediction."""
+        if crop_key not in SNAPSHOT_CROPS:
+            return {"covered": False}
+
+        crop_label = SNAPSHOT_CROPS[crop_key]
+        subset = self.by_location[self.by_location["Crop"].str.lower() == crop_label.lower()]
+        if state:
+            state_matches = subset[subset["State"].str.lower() == state.strip().lower()]
+            if len(state_matches) > 0:
+                subset = state_matches
+
+        if subset.empty:
+            return {"covered": False}
+
+        prices = subset["Modal_Price"]
+        return {
+            "covered": True,
+            "crop": crop_key,
+            "predicted_modal_price": round(float(prices.median()), 0),
+            "observed_price_range": [round(float(prices.min()), 0), round(float(prices.max()), 0)],
+            "observed_median_price": round(float(prices.median()), 0),
+            "sample_size": int(len(subset)),
+            "test_r2": None,
+            "test_mae_rs_per_quintal": None,
+            "state_used": subset.iloc[0]["State"],
+            "data_source": "real (Agmarknet mandi records — observed median/range, not ML-predicted; "
+                            "too few real records for this crop yet to train and honestly test a model)",
+        }
+
     # ------------------------------------------------------------------ #
     # Real per-market current prices (decoded from the raw mandi records,
     # not model output) — this is what a "current mandi prices" screen
     # should show: what real markets actually reported.
     # ------------------------------------------------------------------ #
     def get_market_prices(self, crop, state=None):
-        crop_title = (crop or "").strip().title()
-        subset = self.by_location[self.by_location["Crop"] == crop_title]
+        crop_key = (crop or "").strip().lower()
+        subset = self.by_location[self.by_location["Crop"].str.lower() == crop_key]
         if state:
             state_matches = subset[subset["State"].str.lower() == state.strip().lower()]
             if len(state_matches) > 0:

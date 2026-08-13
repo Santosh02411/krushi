@@ -1011,12 +1011,52 @@ def add_expense():
     return jsonify({"success": True})
 
 
+@app.route("/api/farm/expense/<int:record_id>", methods=["PUT"])
+@auth.login_required
+def update_expense_route(record_id):
+    data = request.json or {}
+    ok = farm_records.update_expense(session["user_id"], record_id, data.get("category", "other"),
+                                      float(data.get("amount_rs", 0)), data.get("crop"), data.get("note"))
+    if not ok:
+        return jsonify({"success": False, "error": "Record not found."}), 404
+    return jsonify({"success": True})
+
+
+@app.route("/api/farm/expense/<int:record_id>", methods=["DELETE"])
+@auth.login_required
+def delete_expense_route(record_id):
+    ok = farm_records.delete_expense(session["user_id"], record_id)
+    if not ok:
+        return jsonify({"success": False, "error": "Record not found."}), 404
+    return jsonify({"success": True})
+
+
 @app.route("/api/farm/income", methods=["POST"])
 @auth.login_required
 def add_income():
     data = request.json or {}
     farm_records.add_income(session["user_id"], float(data.get("amount_rs", 0)),
                              data.get("crop"), data.get("note"))
+    return jsonify({"success": True})
+
+
+@app.route("/api/farm/income/<int:record_id>", methods=["PUT"])
+@auth.login_required
+def update_income_route(record_id):
+    data = request.json or {}
+    ok = farm_records.update_income(session["user_id"], record_id, float(data.get("amount_rs", 0)),
+                                     data.get("crop"), data.get("note"))
+    if not ok:
+        return jsonify({"success": False, "error": "Record not found."}), 404
+    return jsonify({"success": True})
+
+
+@app.route("/api/farm/income/<int:record_id>", methods=["DELETE"])
+@auth.login_required
+def delete_income_route(record_id):
+    ok = farm_records.delete_income(session["user_id"], record_id)
+    if not ok:
+        return jsonify({"success": False, "error": "Record not found."}), 404
     return jsonify({"success": True})
 
 
@@ -1041,6 +1081,29 @@ def add_fertilizer_usage_route():
         float(data.get("quantity_kg", 0)) if data.get("quantity_kg") else None,
         data.get("applied_on"), data.get("note"),
     )
+    return jsonify({"success": True})
+
+
+@app.route("/api/farm/fertilizer-usage/<int:record_id>", methods=["PUT"])
+@auth.login_required
+def update_fertilizer_usage_route(record_id):
+    data = request.json or {}
+    ok = farm_records.update_fertilizer_usage(
+        session["user_id"], record_id, data.get("crop"), data.get("fertilizer", ""),
+        float(data.get("quantity_kg", 0)) if data.get("quantity_kg") else None,
+        data.get("applied_on"), data.get("note"),
+    )
+    if not ok:
+        return jsonify({"success": False, "error": "Record not found."}), 404
+    return jsonify({"success": True})
+
+
+@app.route("/api/farm/fertilizer-usage/<int:record_id>", methods=["DELETE"])
+@auth.login_required
+def delete_fertilizer_usage_route(record_id):
+    ok = farm_records.delete_fertilizer_usage(session["user_id"], record_id)
+    if not ok:
+        return jsonify({"success": False, "error": "Record not found."}), 404
     return jsonify({"success": True})
 
 
@@ -1100,7 +1163,7 @@ def notifications():
 
 
 # ========================================================================= #
-# AI chatbot (real Anthropic API call — see chat_service.py)
+# AI chatbot (real Google Gemini API call — see chat_service.py)
 # ========================================================================= #
 @app.route("/api/chat", methods=["POST"])
 @auth.login_required

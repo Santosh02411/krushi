@@ -2,6 +2,8 @@
 // elements that exist in base.html's nav, so it's safe everywhere.
 
 function initCommon() {
+  initLanguage();
+
   const logoutBtn = document.getElementById('nav-logout-btn');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {

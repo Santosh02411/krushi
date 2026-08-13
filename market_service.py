@@ -68,7 +68,7 @@ class MarketService:
         if not result.get("covered"):
             result["message"] = (
                 f"No real per-market price records for '{crop}'. Real coverage: "
-                f"{', '.join(self.model.covered_crops)}."
+                f"{', '.join(self.model.get_model_info()['covered_crops'])}."
             )
         return result
 
@@ -77,7 +77,7 @@ class MarketService:
         if not result.get("covered"):
             result["message"] = (
                 f"No nearby real market data for '{crop}' with a known coordinate. Real coverage: "
-                f"{', '.join(self.model.covered_crops)} in Haryana/Punjab/Uttar Pradesh/Uttarakhand."
+                f"{', '.join(self.model.get_model_info()['covered_crops'])}."
             )
         return result
 

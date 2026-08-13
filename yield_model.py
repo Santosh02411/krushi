@@ -6,13 +6,16 @@ production data (data/crop_yield_data.csv — 19,689 real district/state/year
 records, columns: Crop, Season, State, Area, Production, Annual_Rainfall,
 Fertilizer, Pesticide, Yield, Avg/Max/Min Temperature).
 
-Coverage: 11 of the 22 crops in the crop-recommendation model have a direct
-match in this yield dataset (see CROP_YIELD_MAP below). For everything
-else, get_expected_yield() returns covered=False rather than a guessed
-number. Coconut was deliberately excluded even though its name matches,
-because this dataset records coconut yield in nuts/hectare while every
-other crop here is tonnes/hectare — mixing the two would silently corrupt
-the numbers, so it's left out of ML coverage rather than mislabeled.
+Coverage: every crop in this dataset reported in tonnes/hectare (see
+CROP_YIELD_MAP below) — 46 real crops. Two categories are deliberately
+left out even though they're in the raw file:
+  - Coconut: recorded in nuts/hectare here, while every other crop is
+    tonnes/hectare — mixing the two would silently corrupt the numbers,
+    so it's left out of ML coverage rather than mislabeled.
+  - Catch-all aggregate rows ("Oilseeds total", "Other Cereals", "Other
+    Rabi/Kharif/Summer pulses", "other oilseeds", "Peas & beans
+    (Pulses)"): these aren't a single identifiable crop, so a predicted
+    number for them wouldn't mean anything concrete to a farmer.
 """
 
 import os
@@ -24,11 +27,27 @@ from sklearn.metrics import r2_score, mean_absolute_error
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data", "crop_yield_data.csv")
 
-# crop_model.py label -> dataset's Crop label
+# crop_model.py label -> dataset's Crop label. The first 11 line up with
+# names already used by the 22-crop recommendation model; everything
+# after that is real yield-dataset coverage with no recommendation-model
+# counterpart yet (so it's reachable directly by crop name, not just
+# through the crop advisor's output).
 CROP_YIELD_MAP = {
     "rice": "Rice", "maize": "Maize", "chickpea": "Gram", "pigeonpeas": "Arhar/Tur",
     "mothbeans": "Moth", "mungbean": "Moong(Green Gram)", "blackgram": "Urad",
     "lentil": "Masoor", "banana": "Banana", "cotton": "Cotton(lint)", "jute": "Jute",
+    # Additional real-data crops (same dataset, same units):
+    "arecanut": "Arecanut", "bajra": "Bajra", "barley": "Barley",
+    "black pepper": "Black pepper", "cardamom": "Cardamom", "cashewnut": "Cashewnut",
+    "castor": "Castor seed", "coriander": "Coriander", "cowpea": "Cowpea(Lobia)",
+    "chilli": "Dry chillies", "garlic": "Garlic", "ginger": "Ginger",
+    "groundnut": "Groundnut", "guar": "Guar seed", "horsegram": "Horse-gram",
+    "jowar": "Jowar", "khesari": "Khesari", "linseed": "Linseed", "mesta": "Mesta",
+    "niger": "Niger seed", "onion": "Onion", "potato": "Potato", "ragi": "Ragi",
+    "mustard": "Rapeseed &Mustard", "safflower": "Safflower", "sunnhemp": "Sannhamp",
+    "sesame": "Sesamum", "small millets": "Small millets", "soybean": "Soyabean",
+    "sugarcane": "Sugarcane", "sunflower": "Sunflower", "sweet potato": "Sweet potato",
+    "tapioca": "Tapioca", "tobacco": "Tobacco", "turmeric": "Turmeric",
 }
 
 FEATURE_COLS = ["Crop", "Season", "State", "Area", "Annual_Rainfall",
@@ -62,13 +81,13 @@ class YieldModel:
         self.columns = X.columns
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        eval_model = RandomForestRegressor(n_estimators=300, max_depth=16, random_state=42, n_jobs=-1)
+        eval_model = RandomForestRegressor(n_estimators=150, max_depth=16, random_state=42, n_jobs=-1)
         eval_model.fit(X_train, y_train)
         preds = eval_model.predict(X_test)
         self.test_r2 = round(r2_score(y_test, preds), 3)
         self.test_mae = round(mean_absolute_error(y_test, preds), 3)
 
-        self.model = RandomForestRegressor(n_estimators=300, max_depth=16, random_state=42, n_jobs=-1)
+        self.model = RandomForestRegressor(n_estimators=150, max_depth=16, random_state=42, n_jobs=-1)
         self.model.fit(X, y)
 
         print(

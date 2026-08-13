@@ -54,8 +54,9 @@ anything else if you're not signed in.
 15. **Smart notifications** — rain tomorrow, fertilizer due today, harvest
     approaching, and a general fungal-disease-risk weather flag, all
     derived from your saved crop calendars and real weather
-16. **AI chatbot** — real Anthropic API integration (needs your own API
-    key; says so honestly if unconfigured, doesn't fake a reply)
+16. **AI chatbot** — real Google Gemini API integration, completely free
+    tier (needs your own free API key; says so honestly if unconfigured,
+    doesn't fake a reply)
 17. **Farm records** — a unified page for crops grown, yield history,
     fertilizer usage (log it manually), expenses, and income
 18. **Analytics** — monthly/yearly charts for yield, profit, water usage,
@@ -113,7 +114,7 @@ one) and the offline model will retrain on it automatically.
 | Knowledge base videos | — | **Deliberately omitted.** I have no web-search/fetch tool in this build to find and verify real video links, and guessing them risks shipping dead or wrong URLs. Each article has a suggested search term instead. |
 | Eligibility checker | A coarse rule engine over a few stable, broadly-known factors (land ownership, notified crop, tax/employment status) per scheme. | **Indicative, not authoritative** — exact eligibility rules change and I can't verify today's criteria without a live search tool. Always says to confirm on the official portal. |
 | Smart notifications | Real saved crop-calendar events (fertilizer/harvest dates) + real weather forecast + your last real disease-check result. | **Real, derived from data already computed elsewhere in the app** — no separate prediction system. The "disease risk" notification is a general weather-based flag (humidity/temperature thresholds that favor fungal disease), explicitly not a diagnosis. |
-| AI chatbot | Real Anthropic API call (`chat_service.py`), with a system prompt describing what Krushi's own tools actually cover. | **Real, once you add `ANTHROPIC_API_KEY`.** Without a key, the chat page says so plainly — it does not fall back to a scripted fake response. |
+| AI chatbot | Real Google Gemini API call (`chat_service.py`, free tier, no credit card), with a system prompt describing what Krushi's own tools actually cover. | **Real, once you add `GEMINI_API_KEY`.** Without a key, the chat page says so plainly — it does not fall back to a scripted fake response. |
 | Farm records (crops grown, yield, expenses, income, fertilizer usage) | Each pulled from its own real table — crops grown and yield populate automatically from the Crop Calendar and Yield Prediction tools; fertilizer usage is logged manually. | **Real, entirely your own data.** |
 | Analytics (monthly/yearly yield, profit, crop comparison, water usage) | Real aggregation (sums/groupings) of the same logs behind Farm Records and the Farm Dashboard. | **Real arithmetic on real data** — no forecasting, no trend-fitting. |
 | Admin: farmers / crops / weather / market panels | Real queries — user list, live model info, a live weather API call, live market model stats. | **Real, live.** |
@@ -213,7 +214,7 @@ krushi/
 ├── farm_records.py            # Expense/income/soil/water/yield logs, crop plans, fertilizer usage, analytics
 ├── admin_tools.py             # Admin panel backend: news, disease DB entries, real usage stats
 ├── notifications.py           # Rain/fertilizer/harvest/disease-risk alerts, from real saved data
-├── chat_service.py            # Real Anthropic API chatbot integration
+├── chat_service.py            # Real Google Gemini API chatbot integration (free tier)
 ├── knowledge_base.py          # Articles, schemes, eligibility checker
 ├── scripts/create_admin.py   # CLI-only admin account creation
 ├── scripts/test_email.py     # standalone SMTP test, independent of the web app
@@ -285,7 +286,7 @@ krushi/
 | `/api/knowledge-base` | GET | Articles/best practices/schemes/etc. |
 | `/api/schemes/eligibility` | POST | Indicative scheme eligibility check |
 | `/api/notifications` | GET | Rain/fertilizer/harvest/disease-risk alerts |
-| `/api/chat` | POST | Chatbot reply (needs `ANTHROPIC_API_KEY`) |
+| `/api/chat` | POST | Chatbot reply (needs `GEMINI_API_KEY`) |
 | `/api/farm/records` | GET | Crops grown / yield / expenses / income / fertilizer usage |
 | `/api/farm/fertilizer-usage` | POST | Log a fertilizer application |
 | `/api/farm/analytics?period=` | GET | Monthly/yearly aggregated analytics |
