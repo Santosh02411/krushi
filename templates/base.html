@@ -26,33 +26,34 @@
     {% if session.get('user_id') %}
     <div class="nav-center">
       <div class="nav-links-primary">
-        <a href="{{ url_for('recommend_page') }}" class="{{ 'active' if active=='recommend' }}">Crop advisor</a>
-        <a href="{{ url_for('soil_page') }}" class="{{ 'active' if active=='soil' }}">Soil</a>
-        <a href="{{ url_for('market_page') }}" class="{{ 'active' if active=='market' }}">Market</a>
-        <a href="{{ url_for('dashboard_page') }}" class="{{ 'active' if active=='dashboard' }}">Dashboard</a>
+        <a href="{{ url_for('recommend_page') }}" class="{{ 'active' if active=='recommend' }}" data-i18n="nav.recommend">Crop advisor</a>
+        <a href="{{ url_for('soil_page') }}" class="{{ 'active' if active=='soil' }}" data-i18n="nav.soil">Soil</a>
+        <a href="{{ url_for('market_page') }}" class="{{ 'active' if active=='market' }}" data-i18n="nav.market">Market</a>
+        <a href="{{ url_for('dashboard_page') }}" class="{{ 'active' if active=='dashboard' }}" data-i18n="nav.dashboard">Dashboard</a>
       </div>
 
       <div class="nav-more-wrap">
-        <button class="nav-more-btn" id="nav-more-btn" type="button">☰ More</button>
+        <button class="nav-more-btn" id="nav-more-btn" type="button"><span data-i18n="nav.more">☰ More</span></button>
         <div class="nav-more-panel" id="nav-more-panel">
-          <a href="{{ url_for('yield_page') }}" class="{{ 'active' if active=='yield' }}">Yield</a>
-          <a href="{{ url_for('fertilizer_page') }}" class="{{ 'active' if active=='fertilizer' }}">Fertilizer</a>
-          <a href="{{ url_for('profit_page') }}" class="{{ 'active' if active=='profit' }}">Profit</a>
-          <a href="{{ url_for('disease_page') }}" class="{{ 'active' if active=='disease' }}">Disease</a>
-          <a href="{{ url_for('water_page') }}" class="{{ 'active' if active=='water' }}">Irrigation</a>
-          <a href="{{ url_for('calendar_page') }}" class="{{ 'active' if active=='calendar' }}">Calendar</a>
-          <a href="{{ url_for('records_page') }}" class="{{ 'active' if active=='records' }}">Records</a>
-          <a href="{{ url_for('analytics_page') }}" class="{{ 'active' if active=='analytics' }}">Analytics</a>
-          <a href="{{ url_for('map_page') }}" class="{{ 'active' if active=='map' }}">Map</a>
-          <a href="{{ url_for('knowledge_page') }}" class="{{ 'active' if active=='knowledge' }}">Learn</a>
-          <a href="{{ url_for('chat_page') }}" class="{{ 'active' if active=='chat' }}">Ask Krushi</a>
-          {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_page') }}" class="{{ 'active' if active=='admin' }}">Admin</a>{% endif %}
+          <a href="{{ url_for('yield_page') }}" class="{{ 'active' if active=='yield' }}" data-i18n="nav.yield">Yield</a>
+          <a href="{{ url_for('fertilizer_page') }}" class="{{ 'active' if active=='fertilizer' }}" data-i18n="nav.fertilizer">Fertilizer</a>
+          <a href="{{ url_for('profit_page') }}" class="{{ 'active' if active=='profit' }}" data-i18n="nav.profit">Profit</a>
+          <a href="{{ url_for('disease_page') }}" class="{{ 'active' if active=='disease' }}" data-i18n="nav.disease">Disease</a>
+          <a href="{{ url_for('water_page') }}" class="{{ 'active' if active=='water' }}" data-i18n="nav.water">Irrigation</a>
+          <a href="{{ url_for('calendar_page') }}" class="{{ 'active' if active=='calendar' }}" data-i18n="nav.calendar">Calendar</a>
+          <a href="{{ url_for('records_page') }}" class="{{ 'active' if active=='records' }}" data-i18n="nav.records">Records</a>
+          <a href="{{ url_for('analytics_page') }}" class="{{ 'active' if active=='analytics' }}" data-i18n="nav.analytics">Analytics</a>
+          <a href="{{ url_for('map_page') }}" class="{{ 'active' if active=='map' }}" data-i18n="nav.map">Map</a>
+          <a href="{{ url_for('knowledge_page') }}" class="{{ 'active' if active=='knowledge' }}" data-i18n="nav.knowledge">Learn</a>
+          <a href="{{ url_for('chat_page') }}" class="{{ 'active' if active=='chat' }}" data-i18n="nav.chat">Ask Krushi</a>
+          {% if user and user.role == 'admin' %}<a href="{{ url_for('admin_page') }}" class="{{ 'active' if active=='admin' }}" data-i18n="nav.admin">Admin</a>{% endif %}
         </div>
       </div>
     </div>
     {% endif %}
 
     <div class="nav-right">
+      <select id="lang-switcher" class="lang-switcher" title="Language / भाषा"></select>
       <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" title="Toggle dark/light theme">🌙</button>
       {% if session.get('user_id') and user %}
       <span id="nav-notif-badge" class="nav-badge" style="display:none;"></span>
@@ -64,13 +65,13 @@
             <div class="email">{{ user.email }}</div>
             <span class="role-badge">{{ user.role }}{% if user.location %} · {{ user.location }}{% endif %}</span>
           </div>
-          <a href="{{ url_for('profile_page') }}" class="avatar-panel-link">Edit profile</a>
-          <button class="avatar-panel-link" id="nav-logout-btn" type="button">Logout</button>
-          <button class="avatar-panel-link danger" id="nav-delete-btn" type="button">Delete account permanently</button>
+          <a href="{{ url_for('profile_page') }}" class="avatar-panel-link" data-i18n="nav.edit_profile">Edit profile</a>
+          <button class="avatar-panel-link" id="nav-logout-btn" type="button" data-i18n="nav.logout">Logout</button>
+          <button class="avatar-panel-link danger" id="nav-delete-btn" type="button" data-i18n="nav.delete_account">Delete account permanently</button>
         </div>
       </div>
       {% else %}
-      <a href="{{ url_for('login_page') }}" class="btn btn-primary btn-small">Login / Register</a>
+      <a href="{{ url_for('login_page') }}" class="btn btn-primary btn-small" data-i18n="nav.login_register">Login / Register</a>
       {% endif %}
     </div>
   </div>
@@ -82,17 +83,18 @@
   <div class="container">
     <div>
       <div class="brand">Krushi</div>
-      <div class="disclaimer">An agricultural decision-support tool. Recommendations are
+      <div class="disclaimer" data-i18n="footer.disclaimer">An agricultural decision-support tool. Recommendations are
         informational and should be combined with local agronomic advice, especially for
         high-value or first-time crops.</div>
     </div>
-    <div class="disclaimer">
+    <div class="disclaimer" data-i18n="footer.data_sources">
       Data sources: Open-Meteo (weather), browser GPS + reverse geocoding (location), real
-      published agronomy datasets (crop/yield/market models), Anthropic API (chatbot, if configured).
+      published agronomy datasets (crop/yield/market models), Google Gemini API (chatbot, if configured).
     </div>
   </div>
 </footer>
 
+<script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/common.js') }}"></script>
 {% block page_script %}{% endblock %}
 </body>

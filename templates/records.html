@@ -5,8 +5,8 @@
 <section id="records">
   <div class="container">
     <div class="section-head">
-      <div class="eyebrow on-light">Your data</div>
-      <h2>Farm records</h2>
+      <div class="eyebrow on-light" data-i18n="page.records_eyebrow">Your data</div>
+      <h2 data-i18n="page.records_heading">Farm records</h2>
       <p>Crops grown, yield, expenses, income, and fertilizer usage — each pulled from its own log,
         nothing synthesized. Crops grown and yield populate automatically when you use the Crop
         Calendar and Yield Prediction tools; log fertilizer usage manually below.</p>
@@ -33,16 +33,36 @@
       <table class="schedule-table" id="records-yield"><tbody></tbody></table>
 
       <h3 style="font-size:1rem; margin-top:26px;">Fertilizer usage</h3>
-      <table class="schedule-table" id="records-fertilizer"><tbody></tbody></table>
+      <table class="schedule-table" id="records-fertilizer">
+        <thead><tr><th>Crop</th><th>Fertilizer</th><th>Quantity (kg)</th><th>Applied on</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
 
       <h3 style="font-size:1rem; margin-top:26px;">Expenses</h3>
-      <table class="schedule-table" id="records-expenses"><tbody></tbody></table>
+      <table class="schedule-table" id="records-expenses">
+        <thead><tr><th>Category</th><th>Amount (₹)</th><th>Crop</th><th>Logged</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
 
       <h3 style="font-size:1rem; margin-top:26px;">Income</h3>
-      <table class="schedule-table" id="records-income"><tbody></tbody></table>
+      <table class="schedule-table" id="records-income">
+        <thead><tr><th>Amount (₹)</th><th>Crop</th><th>Logged</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 </section>
+
+<div id="edit-modal-overlay" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3 id="edit-modal-title">Edit record</h3>
+    <div id="edit-modal-fields"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-small" type="button" id="edit-modal-cancel">Cancel</button>
+      <button class="btn btn-small" type="button" id="edit-modal-save">Save changes</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 {% block page_script %}
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>

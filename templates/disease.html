@@ -4,8 +4,8 @@
 <section id="disease" class="alt">
   <div class="container">
     <div class="section-head">
-      <div class="eyebrow on-light">Step 5</div>
-      <h2>Disease check</h2>
+      <div class="eyebrow on-light" data-i18n="page.disease_eyebrow">Step 5</div>
+      <h2 data-i18n="page.disease_heading">Disease check</h2>
       <p>Select the crop and the symptoms you see to match against common known diseases. This is a
         <b>symptom-matching reference, not image AI</b> — no reliable free image-disease model exists
         that I'd trust to ship here. The photo below is kept for your own record only.</p>
@@ -27,6 +27,12 @@
             <option value="pomegranate">Pomegranate</option><option value="orange">Orange</option>
             <option value="papaya">Papaya</option><option value="sugarcane">Sugarcane</option>
             <option value="tobacco">Tobacco</option><option value="jowar">Jowar</option>
+            <option value="onion">Onion</option><option value="groundnut">Groundnut</option>
+            <option value="soybean">Soybean</option><option value="sunflower">Sunflower</option>
+            <option value="mustard">Mustard</option><option value="chilli">Chilli</option>
+            <option value="turmeric">Turmeric</option><option value="ginger">Ginger</option>
+            <option value="garlic">Garlic</option><option value="apple">Apple</option>
+            <option value="barley">Barley</option>
           </select>
         </div>
         <button class="btn btn-ghost btn-small" id="load-symptoms-btn" type="button">Load symptoms for this crop</button>

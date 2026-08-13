@@ -5,9 +5,9 @@
 <header class="hero">
   <div class="container" style="grid-template-columns: 1fr; text-align:center;">
     <div>
-      <div class="eyebrow on-dark" style="justify-content:center;">Sign in required</div>
-      <h1 style="max-width:none;">Sign in to use Krushi</h1>
-      <p class="lead" style="margin-left:auto; margin-right:auto;">
+      <div class="eyebrow on-dark" style="justify-content:center;" data-i18n="page.login_eyebrow">Sign in required</div>
+      <h1 style="max-width:none;" data-i18n="page.login_heading">Sign in to use Krushi</h1>
+      <p class="lead" style="margin-left:auto; margin-right:auto;" data-i18n="page.login_lead">
         Every tool here — crop advisor, soil health, market prices, irrigation, and the rest —
         is tied to your farm profile, so it's behind sign-in. Registering takes a minute and
         there's no cost.
@@ -22,39 +22,39 @@
     <div class="form-grid" id="auth-forms-wrap">
       <div class="card">
         <div class="auth-tabs">
-          <button class="auth-tab active" data-tab="login" type="button">Login</button>
-          <button class="auth-tab" data-tab="register" type="button">Register</button>
-          <button class="auth-tab" data-tab="forgot" type="button">Forgot password</button>
+          <button class="auth-tab active" data-tab="login" type="button" data-i18n="auth.login_tab">Login</button>
+          <button class="auth-tab" data-tab="register" type="button" data-i18n="auth.register_tab">Register</button>
+          <button class="auth-tab" data-tab="forgot" type="button" data-i18n="auth.forgot_tab">Forgot password</button>
         </div>
 
         <form class="auth-form active" id="login-form">
-          <div class="field"><label for="login-email">Email</label><input type="text" id="login-email" required></div>
+          <div class="field"><label for="login-email" data-i18n="auth.email">Email</label><input type="text" id="login-email" required></div>
           <div class="field">
-            <label for="login-password">Password</label>
+            <label for="login-password" data-i18n="auth.password">Password</label>
             <div class="password-field">
               <input type="password" id="login-password" required>
               <button type="button" class="password-eye" data-target="login-password">👁</button>
             </div>
           </div>
-          <button class="btn btn-primary" type="submit">Login</button>
+          <button class="btn btn-primary" type="submit" data-i18n="auth.login_tab">Login</button>
           <div class="error-note" id="login-error"></div>
         </form>
 
         <form class="auth-form" id="register-form">
           <div class="field-row">
-            <div class="field"><label for="reg-name">Name</label><input type="text" id="reg-name" required></div>
-            <div class="field"><label for="reg-email">Email</label><input type="text" id="reg-email" required></div>
+            <div class="field"><label for="reg-name" data-i18n="auth.name">Name</label><input type="text" id="reg-name" required></div>
+            <div class="field"><label for="reg-email" data-i18n="auth.email">Email</label><input type="text" id="reg-email" required></div>
           </div>
           <div class="field-row">
             <div class="field">
-              <label for="reg-password">Password (min. 8 characters)</label>
+              <label for="reg-password" data-i18n="auth.password_min">Password (min. 8 characters)</label>
               <div class="password-field">
                 <input type="password" id="reg-password" required minlength="8">
                 <button type="button" class="password-eye" data-target="reg-password">👁</button>
               </div>
             </div>
             <div class="field">
-              <label for="reg-password-confirm">Confirm password</label>
+              <label for="reg-password-confirm" data-i18n="auth.confirm_password">Confirm password</label>
               <div class="password-field">
                 <input type="password" id="reg-password-confirm" required minlength="8">
                 <button type="button" class="password-eye" data-target="reg-password-confirm">👁</button>
@@ -62,14 +62,14 @@
             </div>
           </div>
           <div class="field-row">
-            <div class="field"><label for="reg-location">Location</label><input type="text" id="reg-location" placeholder="e.g. Nidasoshi, Karnataka"></div>
-            <div class="field"><label for="reg-farm-size">Farm size (acres)</label><input type="number" id="reg-farm-size" step="0.1"></div>
+            <div class="field"><label for="reg-location" data-i18n="auth.location">Location</label><input type="text" id="reg-location" placeholder="e.g. Nidasoshi, Karnataka"></div>
+            <div class="field"><label for="reg-farm-size" data-i18n="auth.farm_size">Farm size (acres)</label><input type="number" id="reg-farm-size" step="0.1"></div>
           </div>
           <div class="field-row">
-            <div class="field"><label for="reg-soil-type">Soil type</label><select id="reg-soil-type"></select></div>
-            <div class="field"><label for="reg-language">Preferred language</label><select id="reg-language"></select></div>
+            <div class="field"><label for="reg-soil-type" data-i18n="auth.soil_type">Soil type</label><select id="reg-soil-type"></select></div>
+            <div class="field"><label for="reg-language" data-i18n="auth.preferred_language">Preferred language</label><select id="reg-language"></select></div>
           </div>
-          <button class="btn btn-primary" type="submit">Create account</button>
+          <button class="btn btn-primary" type="submit" data-i18n="auth.create_account">Create account</button>
           <div class="error-note" id="register-error"></div>
         </form>
 
