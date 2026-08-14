@@ -290,12 +290,19 @@ footer .disclaimer { max-width: 44ch; opacity: .68; font-size: .8rem; }
 .error-note.show { display: block; }
 
 /* ============================== auth ================================= */
-.auth-tabs { display: flex; gap: 6px; margin-bottom: 18px; background: var(--surface-2); padding: 4px; border-radius: 12px; }
-.auth-tab { font-family: var(--body); font-weight: 600; font-size: .82rem; padding: 8px 14px; border-radius: 9px; border: none; background: transparent; cursor: pointer; color: var(--ink-soft); flex: 1; }
-.auth-tab.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.auth-section { padding: 48px 0 70px; }
+.auth-grid { align-items: start; }
+.auth-card { max-width: 480px; }
+.auth-card-logo { justify-content: center; margin-bottom: 22px; font-size: 1.05rem; }
+.auth-form-title { font-family: var(--display); font-size: 1.5rem; margin: 0 0 20px; text-align: center; }
 .auth-form { display: none; }
 .auth-form.active { display: block; }
 .auth-form .field { margin-bottom: 12px; }
+.auth-submit { width: 100%; margin-top: 6px; }
+.auth-links { text-align: center; margin-top: 16px; font-size: .86rem; color: var(--ink-soft); }
+.auth-links p { margin: 8px 0 0; }
+.auth-link { color: var(--primary-dark); text-decoration: none; font-weight: 600; }
+.auth-link:hover { text-decoration: underline; }
 .password-field { position: relative; }
 .password-field input { padding-right: 42px; }
 .password-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px 8px; color: var(--ink-faint); opacity: .7; }

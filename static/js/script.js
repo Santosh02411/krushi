@@ -21,8 +21,8 @@ let currentUser = null;
 function initLoginPage() {
   loadReferenceData();
   loadEmailStatus();
-  document.querySelectorAll('.auth-tab').forEach(tab => {
-    tab.addEventListener('click', () => switchAuthTab(tab.dataset.tab));
+  document.querySelectorAll('.auth-link[data-switch]').forEach(link => {
+    link.addEventListener('click', (e) => { e.preventDefault(); switchAuthTab(link.dataset.switch); });
   });
   $('login-form').addEventListener('submit', handleLogin);
   $('register-form').addEventListener('submit', handleRegister);
@@ -288,8 +288,6 @@ function populateDistricts() {
 // Auth
 // ---------------------------------------------------------------------- //
 function switchAuthTab(tab) {
-  const tabForHighlight = (tab === 'verify' || tab === 'reset') ? 'forgot' : tab;
-  document.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabForHighlight));
   document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
   const map = { login: 'login-form', register: 'register-form', forgot: 'forgot-form',
                 verify: 'verify-form', reset: 'reset-form' };

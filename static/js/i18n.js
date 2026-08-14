@@ -139,11 +139,26 @@ const I18N = {
     'page.login_lead': "Every tool here — crop advisor, soil health, market prices, irrigation, and the "
       + "rest — is tied to your farm profile, so it's behind sign-in. Registering takes a minute and "
       + "there's no cost.",
-    'auth.login_tab': 'Login', 'auth.register_tab': 'Register', 'auth.forgot_tab': 'Forgot password',
+    'auth.login_tab': 'Log in', 'auth.register_tab': 'Register', 'auth.forgot_tab': 'Forgot password',
     'auth.email': 'Email', 'auth.password': 'Password', 'auth.name': 'Name',
     'auth.password_min': 'Password (min. 8 characters)', 'auth.confirm_password': 'Confirm password',
     'auth.location': 'Location', 'auth.farm_size': 'Farm size (acres)', 'auth.soil_type': 'Soil type',
     'auth.preferred_language': 'Preferred language', 'auth.create_account': 'Create account',
+    'auth.forgot_link': 'Forgot your password?', 'auth.no_account': "Don't have an account?",
+    'auth.have_account': 'Already have an account?', 'auth.back_to_login': '← Back to log in',
+    'auth.forgot_title': 'Reset your password', 'auth.send_code': 'Send code',
+    'auth.verify_code': 'Verify code', 'auth.code_label': '6-digit code',
+    'auth.new_password': 'New password', 'auth.confirm_new_password': 'Confirm new password',
+    'auth.reset_password': 'Reset password',
+    'auth.forgot_step1': "Step 1 of 3 — enter your account email and we'll send a 6-digit code to it.",
+    'auth.forgot_step2': 'Step 2 of 3 — enter the 6-digit code sent to your email.',
+    'auth.forgot_step3': 'Step 3 of 3 — code verified, set your new password.',
+    'auth.email_setup_summary': 'About the password-reset email',
+    'auth.email_setup_body': 'If SMTP_HOST/SMTP_USER/SMTP_PASSWORD are set in .env, the 6-digit code is '
+      + "emailed for real. Without that, there's no way to actually deliver an email, so the code is shown "
+      + 'inline instead — clearly labeled as a fallback, not a substitute for real email. See .env.example '
+      + 'for Gmail App Password setup, or run python scripts/test_email.py you@example.com to test your '
+      + 'SMTP setup directly. Just edited .env? Restart the server — env vars are only read once, at startup.',
   },
   hi: {
     'nav.recommend': 'फ़सल सलाहकार', 'nav.soil': 'मिट्टी', 'nav.market': 'बाज़ार', 'nav.dashboard': 'डैशबोर्ड',
@@ -208,6 +223,22 @@ const I18N = {
     'auth.password_min': 'पासवर्ड (न्यूनतम 8 अक्षर)', 'auth.confirm_password': 'पासवर्ड की पुष्टि करें',
     'auth.location': 'स्थान', 'auth.farm_size': 'फार्म का आकार (एकड़)', 'auth.soil_type': 'मिट्टी का प्रकार',
     'auth.preferred_language': 'पसंदीदा भाषा', 'auth.create_account': 'खाता बनाएं',
+    'auth.forgot_link': 'पासवर्ड भूल गए?', 'auth.no_account': 'खाता नहीं है?',
+    'auth.have_account': 'पहले से खाता है?', 'auth.back_to_login': '← लॉगिन पर वापस जाएं',
+    'auth.forgot_title': 'अपना पासवर्ड रीसेट करें', 'auth.send_code': 'कोड भेजें',
+    'auth.verify_code': 'कोड सत्यापित करें', 'auth.code_label': '6-अंकीय कोड',
+    'auth.new_password': 'नया पासवर्ड', 'auth.confirm_new_password': 'नए पासवर्ड की पुष्टि करें',
+    'auth.reset_password': 'पासवर्ड रीसेट करें',
+    'auth.forgot_step1': 'चरण 1/3 — अपना खाता ईमेल दर्ज करें और हम उस पर 6-अंकीय कोड भेजेंगे।',
+    'auth.forgot_step2': 'चरण 2/3 — अपने ईमेल पर भेजा गया 6-अंकीय कोड दर्ज करें।',
+    'auth.forgot_step3': 'चरण 3/3 — कोड सत्यापित, अब अपना नया पासवर्ड सेट करें।',
+    'auth.email_setup_summary': 'पासवर्ड-रीसेट ईमेल के बारे में',
+    'auth.email_setup_body': 'यदि .env में SMTP_HOST/SMTP_USER/SMTP_PASSWORD सेट हैं, तो 6-अंकीय कोड '
+      + 'वास्तव में ईमेल किया जाता है। इसके बिना, वास्तव में ईमेल भेजने का कोई तरीका नहीं है, इसलिए कोड '
+      + 'सीधे स्क्रीन पर दिखाया जाता है — स्पष्ट रूप से एक फॉलबैक के रूप में लेबल किया गया, वास्तविक ईमेल '
+      + 'का विकल्प नहीं। Gmail App Password सेटअप के लिए .env.example देखें, या अपना SMTP सेटअप सीधे '
+      + 'टेस्ट करने के लिए python scripts/test_email.py you@example.com चलाएं। अभी-अभी .env संपादित '
+      + 'किया? सर्वर पुनः आरंभ करें — env वेरिएबल केवल स्टार्टअप पर एक बार पढ़े जाते हैं।',
   },
   kn: {
     'nav.recommend': 'ಬೆಳೆ ಸಲಹೆಗಾರ', 'nav.soil': 'ಮಣ್ಣು', 'nav.market': 'ಮಾರುಕಟ್ಟೆ', 'nav.dashboard': 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್',
@@ -273,6 +304,23 @@ const I18N = {
     'auth.password_min': 'ಪಾಸ್‌ವರ್ಡ್ (ಕನಿಷ್ಠ 8 ಅಕ್ಷರಗಳು)', 'auth.confirm_password': 'ಪಾಸ್‌ವರ್ಡ್ ದೃಢೀಕರಿಸಿ',
     'auth.location': 'ಸ್ಥಳ', 'auth.farm_size': 'ಫಾರ್ಮ್ ಗಾತ್ರ (ಎಕರೆ)', 'auth.soil_type': 'ಮಣ್ಣಿನ ಪ್ರಕಾರ',
     'auth.preferred_language': 'ಆದ್ಯತೆಯ ಭಾಷೆ', 'auth.create_account': 'ಖಾತೆ ರಚಿಸಿ',
+    'auth.forgot_link': 'ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿದ್ದೀರಾ?', 'auth.no_account': 'ಖಾತೆ ಇಲ್ಲವೇ?',
+    'auth.have_account': 'ಈಗಾಗಲೇ ಖಾತೆ ಇದೆಯೇ?', 'auth.back_to_login': '← ಲಾಗಿನ್‌ಗೆ ಹಿಂತಿರುಗಿ',
+    'auth.forgot_title': 'ನಿಮ್ಮ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ', 'auth.send_code': 'ಕೋಡ್ ಕಳುಹಿಸಿ',
+    'auth.verify_code': 'ಕೋಡ್ ಪರಿಶೀಲಿಸಿ', 'auth.code_label': '6-ಅಂಕಿಯ ಕೋಡ್',
+    'auth.new_password': 'ಹೊಸ ಪಾಸ್‌ವರ್ಡ್', 'auth.confirm_new_password': 'ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ದೃಢೀಕರಿಸಿ',
+    'auth.reset_password': 'ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ',
+    'auth.forgot_step1': 'ಹಂತ 1/3 — ನಿಮ್ಮ ಖಾತೆ ಇಮೇಲ್ ನಮೂದಿಸಿ, ನಾವು ಅದಕ್ಕೆ 6-ಅಂಕಿಯ ಕೋಡ್ ಕಳುಹಿಸುತ್ತೇವೆ.',
+    'auth.forgot_step2': 'ಹಂತ 2/3 — ನಿಮ್ಮ ಇಮೇಲ್‌ಗೆ ಕಳುಹಿಸಿದ 6-ಅಂಕಿಯ ಕೋಡ್ ನಮೂದಿಸಿ.',
+    'auth.forgot_step3': 'ಹಂತ 3/3 — ಕೋಡ್ ಪರಿಶೀಲಿಸಲಾಗಿದೆ, ಈಗ ನಿಮ್ಮ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್ ಹೊಂದಿಸಿ.',
+    'auth.email_setup_summary': 'ಪಾಸ್‌ವರ್ಡ್-ಮರುಹೊಂದಿಕೆ ಇಮೇಲ್ ಬಗ್ಗೆ',
+    'auth.email_setup_body': '.env ನಲ್ಲಿ SMTP_HOST/SMTP_USER/SMTP_PASSWORD ಹೊಂದಿಸಿದ್ದರೆ, 6-ಅಂಕಿಯ ಕೋಡ್ '
+      + 'ನಿಜವಾಗಿ ಇಮೇಲ್ ಮಾಡಲಾಗುತ್ತದೆ. ಅದಿಲ್ಲದೆ, ನಿಜವಾಗಿ ಇಮೇಲ್ ತಲುಪಿಸಲು ಯಾವುದೇ ಮಾರ್ಗವಿಲ್ಲ, ಆದ್ದರಿಂದ '
+      + 'ಕೋಡ್ ಅನ್ನು ಪರದೆಯ ಮೇಲೆ ನೇರವಾಗಿ ತೋರಿಸಲಾಗುತ್ತದೆ — ಸ್ಪಷ್ಟವಾಗಿ ಒಂದು ಫಾಲ್‌ಬ್ಯಾಕ್ ಎಂದು ಲೇಬಲ್ '
+      + 'ಮಾಡಲಾಗಿದೆ, ನಿಜವಾದ ಇಮೇಲ್‌ಗೆ ಬದಲಿಯಲ್ಲ. Gmail App Password ಸೆಟಪ್‌ಗಾಗಿ .env.example ನೋಡಿ, ಅಥವಾ '
+      + 'ನಿಮ್ಮ SMTP ಸೆಟಪ್ ಅನ್ನು ನೇರವಾಗಿ ಪರೀಕ್ಷಿಸಲು python scripts/test_email.py you@example.com '
+      + 'ಚಲಾಯಿಸಿ. ಈಗಷ್ಟೇ .env ಸಂಪಾದಿಸಿದ್ದೀರಾ? ಸರ್ವರ್ ಮರುಪ್ರಾರಂಭಿಸಿ — env ವೇರಿಯೇಬಲ್‌ಗಳನ್ನು ಸ್ಟಾರ್ಟಪ್‌ನಲ್ಲಿ '
+      + 'ಒಮ್ಮೆ ಮಾತ್ರ ಓದಲಾಗುತ್ತದೆ.',
   },
   mr: {
     'nav.recommend': 'पीक सल्लागार', 'nav.soil': 'माती', 'nav.market': 'बाजार', 'nav.dashboard': 'डॅशबोर्ड',
@@ -338,6 +386,22 @@ const I18N = {
     'auth.password_min': 'पासवर्ड (किमान 8 अक्षरे)', 'auth.confirm_password': 'पासवर्डची पुष्टी करा',
     'auth.location': 'स्थान', 'auth.farm_size': 'शेताचा आकार (एकर)', 'auth.soil_type': 'मातीचा प्रकार',
     'auth.preferred_language': 'पसंतीची भाषा', 'auth.create_account': 'खाते तयार करा',
+    'auth.forgot_link': 'पासवर्ड विसरलात?', 'auth.no_account': 'खाते नाही?',
+    'auth.have_account': 'आधीच खाते आहे?', 'auth.back_to_login': '← लॉगिनवर परत जा',
+    'auth.forgot_title': 'तुमचा पासवर्ड रीसेट करा', 'auth.send_code': 'कोड पाठवा',
+    'auth.verify_code': 'कोड सत्यापित करा', 'auth.code_label': '6-अंकी कोड',
+    'auth.new_password': 'नवीन पासवर्ड', 'auth.confirm_new_password': 'नवीन पासवर्डची पुष्टी करा',
+    'auth.reset_password': 'पासवर्ड रीसेट करा',
+    'auth.forgot_step1': 'पायरी 1/3 — तुमचा खाते ईमेल टाका, आम्ही त्यावर 6-अंकी कोड पाठवू.',
+    'auth.forgot_step2': 'पायरी 2/3 — तुमच्या ईमेलवर पाठवलेला 6-अंकी कोड टाका.',
+    'auth.forgot_step3': 'पायरी 3/3 — कोड सत्यापित झाला, आता तुमचा नवीन पासवर्ड सेट करा.',
+    'auth.email_setup_summary': 'पासवर्ड-रीसेट ईमेलबद्दल',
+    'auth.email_setup_body': '.env मध्ये SMTP_HOST/SMTP_USER/SMTP_PASSWORD सेट असल्यास, 6-अंकी कोड '
+      + 'खरोखर ईमेल केला जातो. त्याशिवाय, खरोखर ईमेल पोहोचवण्याचा कोणताही मार्ग नाही, म्हणून कोड '
+      + 'थेट स्क्रीनवर दाखवला जातो — स्पष्टपणे फॉलबॅक म्हणून लेबल केलेला, खऱ्या ईमेलचा पर्याय नाही. '
+      + 'Gmail App Password सेटअपसाठी .env.example पहा, किंवा तुमचा SMTP सेटअप थेट तपासण्यासाठी '
+      + 'python scripts/test_email.py you@example.com चालवा. नुकतेच .env संपादित केले? सर्व्हर '
+      + 'रीस्टार्ट करा — env व्हेरिएबल्स फक्त स्टार्टअपला एकदाच वाचली जातात.',
   },
   ta: {
     'nav.recommend': 'பயிர் ஆலோசகர்', 'nav.soil': 'மண்', 'nav.market': 'சந்தை', 'nav.dashboard': 'டாஷ்போர்டு',
@@ -403,6 +467,23 @@ const I18N = {
     'auth.password_min': 'கடவுச்சொல் (குறைந்தது 8 எழுத்துகள்)', 'auth.confirm_password': 'கடவுச்சொல்லை உறுதிப்படுத்தவும்',
     'auth.location': 'இடம்', 'auth.farm_size': 'பண்ணை அளவு (ஏக்கர்)', 'auth.soil_type': 'மண் வகை',
     'auth.preferred_language': 'விருப்ப மொழி', 'auth.create_account': 'கணக்கை உருவாக்கவும்',
+    'auth.forgot_link': 'கடவுச்சொல்லை மறந்துவிட்டீர்களா?', 'auth.no_account': 'கணக்கு இல்லையா?',
+    'auth.have_account': 'ஏற்கனவே கணக்கு உள்ளதா?', 'auth.back_to_login': '← உள்நுழைவுக்குத் திரும்பு',
+    'auth.forgot_title': 'உங்கள் கடவுச்சொல்லை மீட்டமைக்கவும்', 'auth.send_code': 'குறியீட்டை அனுப்பு',
+    'auth.verify_code': 'குறியீட்டை சரிபார்க்கவும்', 'auth.code_label': '6-இலக்க குறியீடு',
+    'auth.new_password': 'புதிய கடவுச்சொல்', 'auth.confirm_new_password': 'புதிய கடவுச்சொல்லை உறுதிப்படுத்தவும்',
+    'auth.reset_password': 'கடவுச்சொல்லை மீட்டமைக்கவும்',
+    'auth.forgot_step1': 'படி 1/3 — உங்கள் கணக்கு மின்னஞ்சலை உள்ளிடவும், அதற்கு 6-இலக்க குறியீட்டை அனுப்புவோம்.',
+    'auth.forgot_step2': 'படி 2/3 — உங்கள் மின்னஞ்சலுக்கு அனுப்பப்பட்ட 6-இலக்க குறியீட்டை உள்ளிடவும்.',
+    'auth.forgot_step3': 'படி 3/3 — குறியீடு சரிபார்க்கப்பட்டது, இப்போது உங்கள் புதிய கடவுச்சொல்லை அமைக்கவும்.',
+    'auth.email_setup_summary': 'கடவுச்சொல்-மீட்டமைப்பு மின்னஞ்சல் பற்றி',
+    'auth.email_setup_body': '.env இல் SMTP_HOST/SMTP_USER/SMTP_PASSWORD அமைக்கப்பட்டிருந்தால், 6-இலக்க '
+      + 'குறியீடு உண்மையில் மின்னஞ்சல் செய்யப்படும். இல்லையெனில், உண்மையில் மின்னஞ்சல் அனுப்ப வழி '
+      + 'இல்லாததால், குறியீடு நேரடியாகத் திரையில் காட்டப்படும் — இது ஒரு மாற்றாக தெளிவாக '
+      + 'குறிக்கப்பட்டுள்ளது, உண்மையான மின்னஞ்சலுக்கு மாற்றாக அல்ல. Gmail App Password அமைப்புக்கு '
+      + '.env.example ஐப் பார்க்கவும், அல்லது உங்கள் SMTP அமைப்பை நேரடியாகச் சோதிக்க '
+      + 'python scripts/test_email.py you@example.com ஐ இயக்கவும். இப்போதுதான் .env ஐத் திருத்தினீர்களா? '
+      + 'சர்வரை மறுதொடக்கம் செய்யவும் — env மாறிகள் தொடக்கத்தில் ஒரு முறை மட்டுமே படிக்கப்படும்.',
   },
   te: {
     'nav.recommend': 'పంట సలహాదారు', 'nav.soil': 'నేల', 'nav.market': 'మార్కెట్', 'nav.dashboard': 'డాష్‌బోర్డ్',
@@ -468,5 +549,22 @@ const I18N = {
     'auth.password_min': 'పాస్‌వర్డ్ (కనీసం 8 అక్షరాలు)', 'auth.confirm_password': 'పాస్‌వర్డ్‌ను నిర్ధారించండి',
     'auth.location': 'స్థానం', 'auth.farm_size': 'ఫార్మ్ పరిమాణం (ఎకరాలు)', 'auth.soil_type': 'నేల రకం',
     'auth.preferred_language': 'ఇష్టపడే భాష', 'auth.create_account': 'ఖాతాను సృష్టించండి',
+    'auth.forgot_link': 'పాస్‌వర్డ్ మర్చిపోయారా?', 'auth.no_account': 'ఖాతా లేదా?',
+    'auth.have_account': 'ఇప్పటికే ఖాతా ఉందా?', 'auth.back_to_login': '← లాగిన్‌కు తిరిగి వెళ్లండి',
+    'auth.forgot_title': 'మీ పాస్‌వర్డ్‌ను రీసెట్ చేయండి', 'auth.send_code': 'కోడ్ పంపండి',
+    'auth.verify_code': 'కోడ్‌ను ధృవీకరించండి', 'auth.code_label': '6-అంకెల కోడ్',
+    'auth.new_password': 'కొత్త పాస్‌వర్డ్', 'auth.confirm_new_password': 'కొత్త పాస్‌వర్డ్‌ను నిర్ధారించండి',
+    'auth.reset_password': 'పాస్‌వర్డ్‌ను రీసెట్ చేయండి',
+    'auth.forgot_step1': 'దశ 1/3 — మీ ఖాతా ఇమెయిల్‌ను నమోదు చేయండి, మేము దానికి 6-అంకెల కోడ్ పంపుతాము.',
+    'auth.forgot_step2': 'దశ 2/3 — మీ ఇమెయిల్‌కు పంపిన 6-అంకెల కోడ్‌ను నమోదు చేయండి.',
+    'auth.forgot_step3': 'దశ 3/3 — కోడ్ ధృవీకరించబడింది, ఇప్పుడు మీ కొత్త పాస్‌వర్డ్‌ను సెట్ చేయండి.',
+    'auth.email_setup_summary': 'పాస్‌వర్డ్-రీసెట్ ఇమెయిల్ గురించి',
+    'auth.email_setup_body': '.env లో SMTP_HOST/SMTP_USER/SMTP_PASSWORD సెట్ చేసి ఉంటే, 6-అంకెల కోడ్ '
+      + 'నిజంగా ఇమెయిల్ చేయబడుతుంది. అది లేకుండా, నిజంగా ఇమెయిల్ చేరవేయడానికి మార్గం లేదు, కాబట్టి '
+      + 'కోడ్ నేరుగా స్క్రీన్‌పై చూపబడుతుంది — ఇది ఫాల్‌బ్యాక్‌గా స్పష్టంగా లేబుల్ చేయబడింది, నిజమైన '
+      + 'ఇమెయిల్‌కు ప్రత్యామ్నాయం కాదు. Gmail App Password సెటప్ కోసం .env.example చూడండి, లేదా మీ '
+      + 'SMTP సెటప్‌ను నేరుగా పరీక్షించడానికి python scripts/test_email.py you@example.com '
+      + 'నడపండి. ఇప్పుడే .env సవరించారా? సర్వర్‌ను పునఃప్రారంభించండి — env వేరియబుల్స్ స్టార్టప్‌లో '
+      + 'ఒక్కసారి మాత్రమే చదవబడతాయి.',
   },
 };
