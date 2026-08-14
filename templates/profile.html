@@ -28,6 +28,7 @@
         <div class="field"><label>Preferred language</label><select id="profile-language"></select></div>
       </div>
       <button class="btn btn-primary" id="save-profile-btn" type="button">Save changes</button>
+      <span id="profile-save-status" class="location-status" style="margin-left:12px; display:inline-block;"></span>
     </div>
 
     {% if user and user.role == 'admin' %}

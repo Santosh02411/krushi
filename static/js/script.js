@@ -65,9 +65,14 @@ function initPasswordEyeToggles() {
   });
 }
 
-function initProfilePage() {
-  loadReferenceData();
-  checkSession();
+async function initProfilePage() {
+  // Populate the <select> options BEFORE trying to set their values from
+  // the session — these used to fire in parallel, and if checkSession()'s
+  // fetch happened to resolve first, it tried to set .value on a select
+  // that had no <option>s yet (silently a no-op), leaving soil type /
+  // language looking unset even though the account genuinely has one.
+  await loadReferenceData();
+  await checkSession();
   $('save-profile-btn').addEventListener('click', saveProfile);
   if ($('admin-panel')) loadAdminUsers();
 }
@@ -81,7 +86,7 @@ function initHomePage() {
 function initRecommendPage() {
   loadReferenceData();
   checkSession();
-  $('detect-btn').addEventListener('click', detectLocation);
+  $('detect-btn').addEventListener('click', () => detectLocation('detect-btn', 'location-status', 'location'));
   $('fetch-weather-btn').addEventListener('click', fetchWeatherPreview);
   $('recommend-btn').addEventListener('click', getRecommendations);
   if ($('state')) $('state').addEventListener('change', populateDistricts);
@@ -362,6 +367,7 @@ async function handleForgot(e) {
   e.preventDefault();
   const note = $('forgot-note');
   note.style.display = 'block';
+  note.className = 'loading-note show';
   note.textContent = 'Sending…';
   try {
     const res = await fetch('/api/auth/forgot-password', {
@@ -374,17 +380,26 @@ async function handleForgot(e) {
     if (data.email_sent) {
       switchAuthTab('verify');
     } else if (data.reset_token) {
-      // Dev-only fallback (no SMTP configured) — pre-fill the code so the
-      // flow still works for local testing, but it's the same verify step
-      // either way, not a shortcut around it.
+      // SMTP either isn't configured, or a real send attempt genuinely
+      // failed — either way the backend hands back the code as a
+      // fallback so the flow still works, but the WHY must stay visible.
+      // Silently hiding this (as this used to do) meant a real SMTP
+      // error looked identical to "everything's fine" in the UI.
       $('verify-code').value = data.reset_token;
+      const verifyNote = $('verify-note');
+      if (verifyNote) {
+        verifyNote.style.display = 'block';
+        verifyNote.className = 'loading-note show warn';
+        verifyNote.textContent = data.message || 'Could not email the code — using the code shown below instead.';
+      }
       switchAuthTab('verify');
-      note.style.display = 'none';
     } else {
+      note.className = 'loading-note show warn';
       note.textContent = data.message ||
         'No account found with that email — double check it, or register first if you haven\'t yet.';
     }
   } catch (err) {
+    note.className = 'loading-note show warn';
     note.textContent = 'Could not process request.';
   }
 }
@@ -434,6 +449,10 @@ async function handleReset(e) {
 }
 
 async function saveProfile() {
+  const btn = $('save-profile-btn');
+  const status = $('profile-save-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  if (status) { status.textContent = ''; status.className = 'location-status'; }
   try {
     const res = await fetch('/api/auth/profile', {
       method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' },
@@ -443,8 +462,18 @@ async function saveProfile() {
       }),
     });
     const data = await res.json();
-    if (data.success) applyLoggedInState(data.user);
-  } catch (e) { /* leave form as-is */ }
+    if (data.success) {
+      applyLoggedInState(data.user);
+      if (status) { status.textContent = 'Saved.'; status.classList.add('ok'); }
+    } else if (status) {
+      status.textContent = data.error || 'Could not save — please try again.';
+      status.classList.add('warn');
+    }
+  } catch (e) {
+    if (status) { status.textContent = 'Could not save — check your connection and try again.'; status.classList.add('warn'); }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save changes'; }
+  }
 }
 
 async function handleLogout() {

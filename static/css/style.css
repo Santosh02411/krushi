@@ -285,6 +285,7 @@ footer .disclaimer { max-width: 44ch; opacity: .68; font-size: .8rem; }
 
 .loading-note { font-family: var(--mono); font-size: .82rem; color: var(--primary-dark); margin-top: 10px; display: none; }
 .loading-note.show { display: block; }
+.loading-note.warn { color: var(--warn); }
 .error-note { font-family: var(--mono); font-size: .82rem; color: var(--danger); margin-top: 10px; display: none; }
 .error-note.show { display: block; }
 

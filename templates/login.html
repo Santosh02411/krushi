@@ -86,6 +86,7 @@
 
         <form class="auth-form" id="verify-form">
           <p class="hint" style="margin-bottom:12px;">Step 2 of 3 — enter the 6-digit code sent to your email.</p>
+          <div class="loading-note show" id="verify-note" style="display:none;"></div>
           <div class="field"><label for="verify-code">6-digit code</label>
             <input type="text" id="verify-code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required></div>
           <button class="btn btn-primary" type="submit">Verify code</button>
