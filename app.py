@@ -62,6 +62,28 @@ else:
 
 app = Flask(__name__)
 
+# Every static asset (CSS/JS) is served with a cache-busting ?v=<mtime>
+# query string via the asset_url() Jinja helper below — see there for why.
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+
+@app.template_global()
+def asset_url(path):
+    """url_for('static', filename=path) plus a ?v=<mtime> query string, so
+    a browser that already cached an old copy of style.css/script.js is
+    forced to fetch the new one the moment the file actually changes —
+    instead of silently keeping the stale version until a hard refresh.
+    Static files don't re-render like Jinja templates do on every request;
+    without this, "I applied your fix but the page still looks old" is a
+    real, recurring failure mode, not a one-off."""
+    full_path = os.path.join(BASE_DIR, "static", path)
+    try:
+        version = int(os.path.getmtime(full_path))
+    except OSError:
+        version = 0
+    return f"{url_for('static', filename=path)}?v={version}"
+
+
 # SECRET_KEY: use the env var if set (required for production — without a
 # stable key, sessions break on every restart/redeploy and, worse, on a
 # multi-process deploy each worker would sign with a different key). If it

@@ -47,7 +47,7 @@
 </section>
 {% endblock %}
 {% block page_script %}
-<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="{{ asset_url('js/script.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => { initCommon(); initCalendarPage(); });
 </script>
