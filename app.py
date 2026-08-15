@@ -131,7 +131,7 @@ limiter = Limiter(
     default_limits=[], strategy="fixed-window",
 )
 
-DB_PATH = os.path.join(BASE_DIR, "krushi.db")
+DB_PATH = os.getenv("DATABASE_PATH", os.path.join(BASE_DIR, "krushi.db"))
 
 # Services -- initialised once at startup. All three ML models train on
 # their real bundled datasets the first time the app boots (a few seconds).
@@ -163,6 +163,12 @@ def inject_user():
 
 
 def init_db():
+    # If DATABASE_PATH points at a mounted volume directory that doesn't
+    # exist yet on first boot (e.g. a fresh Railway volume), create it
+    # rather than fail with a cryptic sqlite3 "unable to open database" —
+    # the default (alongside app.py) always exists, so this only matters
+    # for a custom DATABASE_PATH.
+    os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("""

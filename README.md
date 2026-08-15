@@ -16,10 +16,11 @@ requires a signed-in session** — `/login` is the only public page, and
 `auth.page_login_required` / `auth.login_required` redirect or 401
 anything else if you're not signed in.
 
-## The 19 feature systems in this build
+## The 20 feature systems in this build
 
 1. **User authentication** — registration/login, farmer profile, forgot
-   password, role-based access (farmer/admin)
+   password (real 3-step OTP-by-email flow), role-based access
+   (farmer/admin), rate-limited login/register/reset endpoints
 2. **Crop recommendation** — state/district/soil type/season inputs, top
    recommendation + 5 alternatives, expected yield, suitable season,
    profitability rating
@@ -27,19 +28,21 @@ anything else if you're not signed in.
    today's weather, 7-day forecast, rain alerts, heatwave warnings
 4. **Soil health analysis** — N/P/K/pH/organic carbon → health score,
    nutrient deficiency, fertilizer recommendation, improvement suggestions
-5. **Market price prediction** — real current mandi prices by market,
-   ML price prediction, nearest real market to your location
+5. **Market price prediction** — real current mandi prices by market
+   (13 crops total: 3 ML-predicted + 10 with a real observed
+   median/range), nearest real market to your location
 6. **Fertilizer recommendation** — after picking a crop, which fertilizer,
-   how much, roughly what it costs, and when to apply it
-7. **Disease check** — symptom-based reference matching for 24 crops
+   how much, roughly what it costs, and when to apply it (44 crops)
+7. **Disease check** — symptom-based reference matching for 35 crops
    (see note below on why this isn't image AI)
 8. **Photo/camera capture for disease records** — real upload/camera
    capture, kept for your reference, not analyzed by any model
 9. **Irrigation recommendation + crop calendar** — 7-day irrigation
    schedule with a "Water Required / Next Irrigation" headline, plus a
-   full sowing→fertilizer→irrigation→harvest calendar
+   full sowing→fertilizer→irrigation→harvest calendar (57 crops: 44
+   annual + 13 perennial)
 10. **Standalone yield prediction** — area/crop/state/season → expected
-    total yield in tonnes + the model's real held-out fit
+    total yield in tonnes + the model's real held-out fit (46 crops)
 11. **Profit estimation** — your entered expenses (seeds/fertilizer/
     labour/water/pesticides) vs. income from real yield × real price →
     net profit
@@ -51,20 +54,28 @@ anything else if you're not signed in.
 14. **Farming knowledge base** — articles, best practices, organic
     farming, pest management, real government scheme links, and an
     eligibility checker (indicative, not authoritative)
-15. **Smart notifications** — rain tomorrow, fertilizer due today, harvest
-    approaching, and a general fungal-disease-risk weather flag, all
-    derived from your saved crop calendars and real weather
-16. **AI chatbot** — real Google Gemini API integration, completely free
-    tier (needs your own free API key; says so honestly if unconfigured,
-    doesn't fake a reply)
-17. **Farm records** — a unified page for crops grown, yield history,
-    fertilizer usage (log it manually), expenses, and income
+15. **Smart notifications** — real, clickable dropdown from the nav bar on
+    every page (not just the home page): rain tomorrow, fertilizer due
+    today, harvest approaching, and a general fungal-disease-risk weather
+    flag, all derived from your saved crop calendars and real weather
+16. **AI chatbot** — real Google Gemini API integration, free tier (needs
+    your own free API key; says so honestly if unconfigured, doesn't fake
+    a reply; automatically falls back through newer model IDs if one gets
+    retired)
+17. **Farm records** — crops grown, yield history, fertilizer usage,
+    expenses, and income — including edit/delete on every entry, not just
+    add
 18. **Analytics** — monthly/yearly charts for yield, profit, water usage,
     and crop comparison, aggregated from your own real logs
 19. **Admin panel** — manage farmers, view real crop/weather/market model
     status, post news announcements, extend the disease database, and a
     dashboard with active users / recommendations generated / disease
     scans (revenue is honestly reported as N/A — no billing system exists)
+20. **UI in 6 languages** — English, Hindi, Kannada, Marathi, Tamil,
+    Telugu. Navigation, footer, the home page, login/register/reset, and
+    every page's heading are translated (116 keys × 6 languages); deeper
+    body copy on individual tool pages is still English-only (see "Not in
+    this build yet")
 
 Everything auto-fills from your real GPS location where possible.
 
@@ -73,40 +84,25 @@ Everything auto-fills from your real GPS location where possible.
 | Module | Data source | Status |
 |---|---|---|
 | Crop recommendation | [Crop Recommendation Dataset](https://raw.githubusercontent.com/Gladiator07/Harvestify/master/Data-processed/crop_recommendation.csv) — 2,200 real samples, 22 crops. | **Real.** `RandomForestClassifier`, held-out test accuracy shown live. |
-| Expected yield | Real Indian government crop-production data, 1997-2020, all states (`data/crop_yield_data.csv`, 19,689 records). | **Real, covers 11 of 22 crops** (rice, maize, chickpea, pigeonpeas, mothbeans, mungbean, blackgram, lentil, banana, cotton, jute). `RandomForestRegressor`, held-out R²=0.93. Other crops return an explicit "not covered" message. |
+| Expected yield | Real Indian government crop-production data, 1997-2020, all states (`data/crop_yield_data.csv`, 19,689 records). | **Real, covers 46 crops** (the dataset actually has 55 — coconut is excluded because it's recorded in nuts/hectare rather than tonnes/hectare like everything else, and 8 catch-all "other/misc" aggregate rows aren't a single identifiable crop). `RandomForestRegressor`, held-out R²=0.94. Other crops return an explicit "not covered" message. |
 | Location | Browser GPS → reverse geocoding. | **Real, accurate.** IP-based lookup is kept only as a fallback, with an explicit accuracy warning. |
-| Crop recommendation regional relevance | Real Indian government crop-production records (`data/crop_yield_data.csv`) — checked per state for the 11 crops shared with the yield model. | **Real.** The N/P/K model has no location input at all; a state re-ranks its results using real "is this crop actually grown there" records, but never demotes a crop just because a record is missing — some states (e.g. Rajasthan) are entirely absent from this dataset, a data-completeness gap, not evidence against the crop. |
+| Crop recommendation regional relevance | Real Indian government crop-production records (`data/crop_yield_data.csv`) — checked per state for the 12 crops shared with the N/P/K soil-based model. | **Real.** The N/P/K model has no location input at all; a state re-ranks its results using real "is this crop actually grown there" records, but never demotes a crop just because a record is missing — some states (e.g. Rajasthan) are entirely absent from this dataset, a data-completeness gap, not evidence against the crop. |
 | "Commonly grown in your state" (49 crops) | Same dataset, full crop list — includes sugarcane, tobacco, jowar, bajra, ragi, groundnut, wheat, onion, and more that the N/P/K model doesn't know at all. | **Real — a ranked list, not a trained model.** I tried training a classifier (state + season + climate → crop) and it scored 2.4% top-1 accuracy on held-out data — the task is nearly non-identifiable from those features alone, since dozens of crops genuinely coexist in the same state/season/climate. Rather than dress up that noise as a confidence score, this ranks crops by real record count instead. See `regional_crops.py`. |
 | Password reset email | Real SMTP send if `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD` are set in `.env` (e.g. a Gmail App Password). | **Real once configured.** Without SMTP credentials, the token is returned directly in the API response instead — clearly labeled as the dev-mode fallback, not a silent failure. |
 | Weather (current, 7-day forecast, UV index) | [Open-Meteo](https://open-meteo.com), by exact GPS coordinates when available. | **Real, live**, no API key required. |
 | Rain alerts / heatwave warnings | Rule-based thresholds applied to the real forecast above. | **Real, transparent logic.** |
 | Soil health score / fertilizer guidance | India's Soil Health Card classification bands (published standard, not ML). | **Real reference ranges**, general guidance — not a substitute for a lab test. |
-| Market prices (per real market) | Real Agmarknet mandi records (`data/market_prices_by_location.csv`), decoded to real market/state names. | **Real, covers potato/tomato/wheat** across 18 real markets in Haryana/Punjab/UP/Uttarakhand. |
-| Market price prediction | Same dataset, `RandomForestRegressor`. | **Real, offline coverage stays at 3 crops (potato/tomato/wheat)** — I searched again for a larger real multi-crop Agmarknet-style dataset and didn't find one solid enough to add (see note in the "Broader market prices" section below). Held-out R²=0.40 (modest — shown honestly). With `MARKET_API_KEY` set, the market page's "Other" option queries data.gov.in live for **any** crop name — if a state-specific query returns nothing, it retries nationally rather than giving up, clearly labeled as a national (not state-specific) figure when that happens. **Note:** data.gov.in is frequently slow/unreachable from some networks; a request that would otherwise wait out a full timeout on every crop lookup instead trips a short circuit breaker after one failure and falls straight to the local model for the next couple of minutes — see `market_service.py`. |
-
-### Broader market prices — what I tried
-
-I searched again (GitHub repo search + direct downloads, several query
-variations) for a larger real dataset with per-market price records
-across more crops than potato/tomato/wheat, to genuinely expand the
-offline model. I didn't find one solid enough to add — the closest hit
-was a repo with only commodity-ID lookup tables, no actual price
-records. Rather than fabricate one, I made the *live* data.gov.in path
-(which genuinely does cover far more crops) more useful instead: the
-market page now has an "Other" crop option for typing in any commodity
-name, and a failed state-specific query now retries nationally instead
-of giving up. If you find a real, larger Agmarknet-style dataset, drop
-it in `data/market_price_data.csv` (same column format as the existing
-one) and the offline model will retrain on it automatically.
-| Nearest market | Real market coordinates (hardcoded for the 16 confidently-identified towns in the dataset) + haversine distance from your GPS. | **Real**, for the 3 covered crops. |
-| Profitability rating | Expected yield × predicted price, ranked relative to other recommended crops. | **Real where both a yield estimate and a price estimate exist for a crop** — in practice this means the crop-recommendation set (22 crops) and the market-price set (3 crops) rarely overlap, so profitability shows "insufficient data" for most crops today. See below. |
-| Fertilizer plan (quantity/cost/schedule) | Published package-of-practices N-P-K doses for major crops, converted to physical fertilizer quantities and representative bag prices. | **Real reference data, covers 12 crops.** Costs are approximate, not live pricing. |
+| Market prices (per real market) | Real Agmarknet mandi records (`data/market_prices_by_location.csv`), decoded to real market/state names. | **Real, covers 13 crops**: potato/tomato/wheat across 18 real markets in Haryana/Punjab/UP/Uttarakhand, plus onion/gram/cucumber/brinjal/cluster beans/bottle gourd/amaranthus/carrot/snake gourd/lemon pulled live from the official data.gov.in Agmarknet feed (real, dated records — Odisha/Tamil Nadu/Andhra Pradesh markets). |
+| Market price prediction | Same dataset, `RandomForestRegressor`. | **Two honest tiers.** Potato/tomato/wheat get a real ML prediction (held-out R²=0.40, modest, shown honestly). The 10 crops above get a real *observed* median/range instead of an ML prediction — there are only a handful of real records for each, nowhere near enough to train and honestly test a regression on, so `market_model.py` reports the real number without dressing it up as a model output. With `MARKET_API_KEY` set, the market page's "Other" option queries data.gov.in live for **any** crop name — if a state-specific query returns nothing, it retries nationally rather than giving up, clearly labeled as a national (not state-specific) figure when that happens. **Note:** data.gov.in is frequently slow/unreachable from some networks; a request that would otherwise wait out a full timeout on every crop lookup instead trips a short circuit breaker after one failure and falls straight to the local model for the next couple of minutes — see `market_service.py`. |
+| Nearest market | Real market coordinates (hardcoded for the confidently-identified towns in the dataset) + haversine distance from your GPS. | **Real**, for the 13 covered crops (where a market's town is confidently identifiable — a couple of ambiguous village names are left out rather than guessed). |
+| Profitability rating | Expected yield × predicted price, ranked relative to other recommended crops. | **Real where both a yield estimate and a price estimate exist for a crop** — in practice this means the crop-recommendation set (22 crops), the yield set (46 crops) and the market set (13 crops) still don't fully overlap, so profitability shows "insufficient data" for some crops. See below. |
+| Fertilizer plan (quantity/cost/schedule) | Published package-of-practices N-P-K doses for major crops, converted to physical fertilizer quantities and representative bag prices. | **Real reference data, covers 44 crops.** Costs are approximate, not live pricing. Long-duration plantation/spice crops (arecanut, cardamom, black pepper, cashewnut) are deliberately left out — their real fertilizer programs are multi-year and variety/spacing-dependent in a way a single per-acre figure would misrepresent. |
 | Irrigation schedule + "Water Required / Next Irrigation" headline | Same rule-based water-balance calculation as before, now with a one-line summary derived from the same schedule. | **Real, transparent logic.** |
-| Crop calendar (sowing/fertilizer/irrigation/harvest dates) | Published crop-duration and growth-stage timing references, plus the fertilizer/irrigation data above. | **Real arithmetic on real reference data, covers 13 annual crops.** Perennial crops get a simpler seasonal-care note instead of a fabricated single harvest date. |
-| Disease check | A symptom-matching reference table for common diseases (24 crops), sourced from standard plant-pathology/extension knowledge. | **Real reference data — explicitly NOT image AI.** See below for why. |
+| Crop calendar (sowing/fertilizer/irrigation/harvest dates) | Published crop-duration and growth-stage timing references, plus the fertilizer/irrigation data above. | **Real arithmetic on real reference data, covers 44 annual crops + 13 perennial crops** (which get a simpler seasonal-care note instead of a fabricated single harvest date). |
+| Disease check | A symptom-matching reference table for common diseases (35 crops), sourced from standard plant-pathology/extension knowledge. | **Real reference data — explicitly NOT image AI.** See below for why. |
 | Disease photo / camera capture | Real file upload / browser camera capture. | **Real upload, stored for your own reference — not analyzed.** |
-| Standalone yield prediction | Same yield_model.py as the crop advisor, converted to total tonnes for your entered area. | **Real, same 11-crop coverage.** "Accuracy" is the model's R² expressed as a percentage — labeled as such, not classification accuracy. |
-| Profit estimation | Real yield × real price (or your entered price) minus your entered expenses. | **Real arithmetic on real/user inputs.** Since the yield-covered crops (11) and price-covered crops (3) don't overlap, most crops need you to enter an expected price — the app says so rather than guessing one. |
+| Standalone yield prediction | Same yield_model.py as the crop advisor, converted to total tonnes for your entered area. | **Real, same 46-crop coverage.** "Accuracy" is the model's R² expressed as a percentage — labeled as such, not classification accuracy. |
+| Profit estimation | Real yield × real price (or your entered price) minus your entered expenses. | **Real arithmetic on real/user inputs.** The yield-covered crops (46) and price-covered crops (13) still don't fully overlap, so some crops need you to enter an expected price — the app says so rather than guessing one. |
 | Farm dashboard | Your own expense/income entries, plus auto-logged soil health scores, water usage, and yield predictions whenever you're signed in. | **Real, entirely your own data.** A new account's dashboard is empty — there's no demo/seed data. |
 | Interactive farm map | Leaflet.js + OpenStreetMap tiles (free, no API key) + real market coordinates. | **Real.** "Nearby weather stations" is deliberately not shown — Open-Meteo is a model-based forecast service with no public physical station location data to show. |
 | Knowledge base articles / best practices / organic farming / pest management | General agronomy reference content. | **Real, general knowledge**, not sourced from a live database. |
@@ -144,21 +140,20 @@ alongside this without removing it.
 
 The crop-recommendation model, the yield model, and the market-price model
 are each trained on a *different* real dataset, and those datasets don't
-cover the same crops. Profitability needs both a real yield number and a
-real price number for the *same* crop, so it only appears when a
-recommended crop happens to be in both the yield dataset (11 crops) and
-the market dataset (3 crops: potato, tomato, wheat) — which is rare, since
-the crop-recommendation dataset's 22 crops don't actually include potato,
-tomato or wheat at all. Rather than paper over that with an invented
-number, the app says so. Expanding `data/market_price_data.csv` with more
-crops (e.g. rice, maize) would directly fix this.
+fully overlap. Profitability needs both a real yield number and a real
+price number for the *same* crop — the yield model covers 46 crops and
+the market model covers 13, but the crop-recommendation dataset's 22
+crops still don't include potato, tomato, or wheat at all, so some
+combinations still show "insufficient data" rather than an invented
+number.
 
 ## Setup
 
 1. Create a virtual environment and install dependencies:
    ```bash
    python -m venv venv
-   source venv/bin/activate   # venv\Scripts\activate on Windows
+   source venv/bin/activate            # on IOS
+   venv\Scripts\activate               # on Windows
    pip install -r requirements.txt
    ```
 
@@ -185,12 +180,13 @@ crops (e.g. rice, maize) would directly fix this.
    ```
 
 The first startup takes several seconds while all three ML models train on
-their bundled real datasets:
+their bundled real datasets (~40s on a single-core machine; a few seconds
+on anything with more cores, since training uses all available):
 ```
 [ml_models] Trained RandomForest on 2200 real samples across 22 crops |
 held-out test accuracy=99.3% macro-F1=99.3%
-[yield_model] Trained RandomForestRegressor on 5917 real APY records
-(11 crops) | held-out R2=0.934 MAE=0.456 tonnes/ha
+[yield_model] Trained RandomForestRegressor on 17367 real APY records
+(46 crops) | held-out R2=0.937 MAE=1.052 tonnes/ha
 [market_model] Trained RandomForestRegressor on 6361 real mandi records
 (Potato/Tomato/Wheat, 4 states) | held-out R2=0.402 MAE=Rs.474.6/quintal
 ```
@@ -234,9 +230,11 @@ krushi/
 │   │   chat.html, about.html, profile.html, admin.html
 │   │   # one page per feature, all login-gated (admin.html: admin role only)
 ├── static/css/style.css
-├── static/js/common.js        # runs on every page: nav logout, notif badge
+├── static/js/common.js        # runs on every page: nav logout, notif dropdown, i18n bootstrap
 ├── static/js/script.js        # all feature logic, one initXPage() per page
+├── static/js/i18n.js          # data-i18n translation dictionaries (6 languages)
 ├── requirements.txt
+├── Procfile                   # `web: gunicorn app:app ...` — for Railway/Render/etc.
 └── .env.example
 ```
 
@@ -281,14 +279,17 @@ krushi/
 | `/api/yield-prediction` | POST | Standalone expected-yield tool |
 | `/api/profit-estimation` | POST | Income − expenses = net profit |
 | `/api/farm/expense` | POST | Log an expense (login required) |
+| `/api/farm/expense/<id>` | PUT/DELETE | Edit or remove an expense entry (login required, own records only) |
 | `/api/farm/income` | POST | Log income (login required) |
+| `/api/farm/income/<id>` | PUT/DELETE | Edit or remove an income entry (login required, own records only) |
 | `/api/farm/dashboard` | GET | Your dashboard data (login required) |
 | `/api/knowledge-base` | GET | Articles/best practices/schemes/etc. |
 | `/api/schemes/eligibility` | POST | Indicative scheme eligibility check |
-| `/api/notifications` | GET | Rain/fertilizer/harvest/disease-risk alerts |
-| `/api/chat` | POST | Chatbot reply (needs `GEMINI_API_KEY`) |
+| `/api/notifications?lat=&lon=` | GET | Rain/fertilizer/harvest/disease-risk alerts — also drives the nav bell dropdown on every page |
+| `/api/chat` | POST | Chatbot reply (needs `GEMINI_API_KEY`, rate-limited to 20/hour) |
 | `/api/farm/records` | GET | Crops grown / yield / expenses / income / fertilizer usage |
 | `/api/farm/fertilizer-usage` | POST | Log a fertilizer application |
+| `/api/farm/fertilizer-usage/<id>` | PUT/DELETE | Edit or remove a fertilizer-usage entry (login required, own records only) |
 | `/api/farm/analytics?period=` | GET | Monthly/yearly aggregated analytics |
 | `/api/news` | GET | Public announcements (read-only) |
 | `/api/admin/stats` | GET | Real usage stats (admin only) |
@@ -366,8 +367,10 @@ bug; it's fixed). Admin accounts are created only via
 - **Crop model**: `RandomForestClassifier`, ~99% held-out accuracy — a
   clean, well-separated dataset, so treat this as "fits this dataset very
   well," not a guarantee for every real field.
-- **Yield model**: `RandomForestRegressor`, R²=0.93, MAE=0.46 tonnes/ha on
-  the 11 covered crops. The dataset's coconut yield is recorded in
+- **Yield model**: `RandomForestRegressor`, R²=0.94, MAE=1.05 tonnes/ha on
+  46 covered crops (150 estimators — trimmed down from 300 with no
+  measurable accuracy loss, since the wider crop coverage was making
+  startup noticeably slower). The dataset's coconut yield is recorded in
   nuts/hectare (not tonnes/hectare like everything else), so it's
   deliberately excluded from ML coverage rather than silently mixed in.
 - **Market model**: `RandomForestRegressor`, R²=0.40 — modest, and shown
@@ -387,39 +390,110 @@ bug; it's fixed). Admin accounts are created only via
 - **ML**: scikit-learn (3 RandomForest models)
 - **Frontend**: HTML / CSS / vanilla JavaScript, browser Geolocation API,
   Chart.js (dashboard charts), Leaflet.js + OpenStreetMap (farm map, both
-  free/keyless)
+  free/keyless). Every CSS/JS asset is served through an `asset_url()`
+  Jinja helper that appends `?v=<file-mtime>` — so a browser that already
+  cached the old version of `script.js`/`style.css` is forced to fetch the
+  new one the moment the file actually changes, instead of silently
+  serving stale UI until someone hard-refreshes.
 - **Database**: SQLite (`users`, `password_resets`, `recommendations`,
-  `expenses`, `income`, `soil_health_logs`, `water_usage_logs`, `yield_logs`)
+  `expenses`, `income`, `soil_health_logs`, `water_usage_logs`, `yield_logs`).
+  Path is configurable via `DATABASE_PATH` in `.env` (defaults to
+  `krushi.db` next to `app.py`) — point it at a mounted persistent volume
+  in production, see "Deploying" below.
 - **External APIs**: Open-Meteo (weather), a free reverse-geocoding API
   (location), ip-api.com (fallback location), data.gov.in (optional live
   market data), Google Gemini (optional chat)
 
-## Before deploying anywhere reachable outside your own machine
+## Deploying
 
-- Set `SECRET_KEY` in `.env` to a real random value (`python -c "import
-  secrets; print(secrets.token_hex(32))"`). Without it the app still
-  boots (with a per-process random key, so it doesn't fail closed on new
-  contributors), but sessions won't survive a restart and it's unsafe for
-  more than one worker process.
-- Set `ALLOWED_ORIGINS` in `.env` to your real domain(s) — it defaults to
+### Security checklist (do this regardless of platform)
+
+- Set `SECRET_KEY` in your host's environment variables to a real random
+  value (`python -c "import secrets; print(secrets.token_hex(32))"`).
+  Without it the app still boots (with a per-process random key, so it
+  doesn't fail closed on new contributors), but sessions won't survive a
+  restart and it's unsafe for more than one worker process.
+- Set `ALLOWED_ORIGINS` to your real deployed domain(s) — it defaults to
   `localhost` only.
-- Set `COOKIE_SECURE=1` once you're behind HTTPS.
+- Set `COOKIE_SECURE=1` once you're behind HTTPS (every platform below
+  gives you HTTPS by default).
 - Leave `FLASK_DEBUG` unset/`0` — Flask's debug mode exposes an
   interactive in-browser debugger that allows arbitrary code execution if
   left on for anything public.
-- Run behind gunicorn (already in `requirements.txt`), not `python app.py`.
+- Run behind gunicorn (already in `requirements.txt` and `Procfile`), not
+  `python app.py`.
+- **Never commit `.env`** — it's in `.gitignore`, but that only stops
+  *future* commits. If it was ever committed before `.gitignore` was
+  added, it's still sitting in git history regardless — check your
+  repo's commit history for it, and if you find it, rotate every
+  credential inside it (Gmail App Password, Gemini key) rather than just
+  deleting the file, since a deleted file is still recoverable from
+  history.
+
+### Why SQLite needs a persistent volume
+
+Most container-based hosts (Render, Railway, Fly.io, etc.) wipe the
+filesystem on every redeploy — including `krushi.db`, meaning every
+registered user and every logged record disappears each time you push an
+update, unless the database file lives on a **persistent volume** the
+platform gives you, not the app's own ephemeral folder. `DATABASE_PATH`
+in `.env` controls where the file goes — point it at your platform's
+mounted volume path (e.g. `/data/krushi.db`), and `init_db()` creates the
+directory automatically if it doesn't exist yet.
+
+### Recommended: Railway (free tier realistically covers a low-traffic app)
+
+Chosen over Render/PythonAnywhere free tiers because: Render's free tier
+has no persistent disk and sleeps after 15 minutes idle (meaning every
+wake-up re-trains all 3 ML models before serving the first request), and
+PythonAnywhere's free tier blocks most outbound internet except a small
+allowlist — which would silently break real SMTP email and likely the
+Gemini chatbot too. Railway restricts neither.
+
+1. Push this repo to GitHub (done) — make sure it includes the `Procfile`
+   at the repo root.
+2. [railway.app](https://railway.app) → sign up with GitHub → **New
+   Project → Deploy from GitHub repo** → select your repo. Railway
+   auto-detects Python + the `Procfile`.
+3. **Add a volume** so your database survives redeploys: service →
+   Settings → Volumes → New Volume → mount path `/data`.
+4. **Variables** tab → add:
+   ```
+   DATABASE_PATH=/data/krushi.db
+   SECRET_KEY=<a fresh random value — see checklist above>
+   FLASK_DEBUG=0
+   COOKIE_SECURE=1
+   ALLOWED_ORIGINS=<your Railway URL, added after step 5>
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=<your gmail>
+   SMTP_PASSWORD=<a Gmail App Password — see the email section above>
+   GEMINI_API_KEY=<optional, for the chatbot>
+   MARKET_API_KEY=<optional, for live market data beyond the 13 built-in crops>
+   ```
+5. Railway gives you a live URL (`your-app.up.railway.app`) once deployed.
+   Go back to Variables and set `ALLOWED_ORIGINS` to that exact URL
+   (with `https://`), then redeploy once more so it takes effect.
+
+Railway's free usage credit (~$5/month at time of writing) realistically
+covers an app at this traffic level — but it's not an unconditional
+free-forever guarantee, since it's tied to actual usage. If that becomes
+a real constraint once you have real users, that's the point to revisit
+hosting, not before.
 
 ## Not in this build yet
 
-Translated UI strings cover navigation, footer, the home page, and every
-page's heading in Hindi/Kannada/Marathi/Tamil/Telugu/English (backed by a
-`data-i18n`-attribute system, `static/js/i18n.js`) — but body copy, form
-labels, and JS-rendered results on most individual tool pages are still
-English-only. AI disease detection from photos still isn't real (needs a
-trained CV model that actually installs — see above); the "News" feature
-is an internal admin-posted announcements board, not a live external news
-feed, since there's no search tool in this build to source and verify
-real articles. There's no automated test suite yet beyond
+Translated UI covers navigation, footer, the home page, login/register/
+password-reset, and every page's heading in Hindi/Kannada/Marathi/Tamil/
+Telugu/English (116 keys × 6 languages, backed by a `data-i18n`-attribute
+system, `static/js/i18n.js`) — but body copy, form labels, and
+JS-rendered results on most individual tool pages are still English-only.
+AI disease detection from photos still isn't real (needs a trained CV
+model that actually installs — see above); the "News" feature is an
+internal admin-posted announcements board, not a live external news feed,
+since there's no search tool in this build to source and verify real
+articles. There's no automated test suite yet beyond
 `scripts/test_email.py`, and the three RandomForest models retrain from
-scratch on every app restart rather than being cached to disk.
+scratch on every app restart rather than being cached to disk (a few
+seconds on a multi-core machine; noticeably slower on a single-core one).
 

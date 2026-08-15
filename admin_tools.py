@@ -102,9 +102,8 @@ def get_admin_stats():
     conn.close()
 
     import sqlite3
-    import os
-    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "krushi.db")
-    conn2 = sqlite3.connect(db_path)
+    from auth import DB_PATH
+    conn2 = sqlite3.connect(DB_PATH)
     total_recommendations = conn2.execute("SELECT COUNT(*) FROM recommendations").fetchone()[0]
     conn2.close()
 

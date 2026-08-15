@@ -25,7 +25,7 @@ from functools import wraps
 from flask import g, jsonify, redirect, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "krushi.db")
+DB_PATH = os.getenv("DATABASE_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "krushi.db"))
 RESET_TOKEN_TTL_MINUTES = 30
 
 
