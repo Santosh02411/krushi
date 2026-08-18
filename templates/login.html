@@ -119,14 +119,18 @@
         is tied to your farm profile, so it's behind sign-in. Registering takes a minute and
         there's no cost.
       </p>
-      <div class="divider-label" data-i18n="auth.email_setup_summary">About the password-reset email</div>
-      <div id="email-status-badge" class="location-status" style="margin-bottom:12px;">Checking email configuration…</div>
-      <p class="hint" data-i18n="auth.email_setup_body">If <code>SMTP_HOST</code>/<code>SMTP_USER</code>/<code>SMTP_PASSWORD</code>
-        are set in <code>.env</code>, the 6-digit code is emailed for real. Without that, there's no way to
-        actually deliver an email, so the code is shown inline instead — clearly labeled as a fallback, not a
-        substitute for real email. See <code>.env.example</code> for Gmail App Password setup, or run
-        <code>python scripts/test_email.py you@example.com</code> to test your SMTP setup directly. Just
-        edited <code>.env</code>? Restart the server — env vars are only read once, at startup.</p>
+      <div class="divider-label" data-i18n="about.whats_real">Built on real data, not guesses</div>
+      <p class="hint" data-i18n="about.login_panel_body">
+        Crop and yield recommendations come from real agricultural datasets and trained models,
+        not scripted responses. Live weather comes from Open-Meteo for your exact location.
+        Market prices are real recorded mandi data. Where something genuinely isn't available yet,
+        Krushi says so plainly instead of making up a number.
+      </p>
+      <div class="divider-label" data-i18n="auth.email_setup_summary">Password reset</div>
+      <p class="hint" data-i18n="auth.forgot_help_text">
+        A 6-digit code is emailed to your registered address when you request a password reset.
+        If it doesn't arrive within a minute or two, check your spam folder.
+      </p>
     </div>
   </div>
 </section>

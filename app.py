@@ -211,6 +211,15 @@ def log_recommendation(payload, top_result, user_id=None):
         print(f"[app] could not log recommendation: {e}")
 
 
+# Runs at import time, not just inside `if __name__ == "__main__"` —
+# gunicorn (used in production, see Procfile) imports this module and
+# calls the `app` object directly, so it never executes that block.
+# Without this being here, unconditionally, the database tables are
+# never created in production and every query 500s with "relation does
+# not exist" — found exactly that way deploying this to Render.
+init_db()
+
+
 # ========================================================================= #
 # Pages — every feature lives on its own route now, and every page except
 # /login requires a signed-in session (auth.page_login_required redirects
@@ -1281,7 +1290,6 @@ def chat():
 
 
 if __name__ == "__main__":
-    init_db()
     # debug mode is opt-in via env, not hardcoded — Flask's debug mode
     # exposes an interactive in-browser debugger that lets anyone who can
     # trigger an unhandled exception execute arbitrary Python on the
