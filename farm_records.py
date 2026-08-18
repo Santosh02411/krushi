@@ -10,7 +10,6 @@ account's dashboard starts empty, same as the app itself would in
 production.
 """
 
-import sqlite3
 from datetime import datetime
 
 from auth import get_db
@@ -277,8 +276,11 @@ def get_farm_records(user_id):
 
 
 def _bucket_key(created_at, period):
-    # created_at is 'YYYY-MM-DD HH:MM:SS' from SQLite CURRENT_TIMESTAMP
-    return created_at[:7] if period == "monthly" else created_at[:4]  # YYYY-MM or YYYY
+    # SQLite returns TIMESTAMP columns as 'YYYY-MM-DD HH:MM:SS' strings;
+    # Postgres returns native datetime objects for the same column type.
+    # Handle both rather than assuming one.
+    text = created_at.strftime("%Y-%m-%d %H:%M:%S") if hasattr(created_at, "strftime") else str(created_at)
+    return text[:7] if period == "monthly" else text[:4]  # YYYY-MM or YYYY
 
 
 def get_analytics(user_id, period="monthly"):

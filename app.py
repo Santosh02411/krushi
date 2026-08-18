@@ -1,7 +1,6 @@
 import json
 import os
 import secrets
-import sqlite3
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
@@ -15,6 +14,7 @@ from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 import auth
+import db_compat
 import farm_records
 from admin_tools import (add_custom_disease, add_news, delete_custom_disease, delete_news,
                           get_admin_stats, get_custom_diseases, get_news)
@@ -166,10 +166,11 @@ def init_db():
     # If DATABASE_PATH points at a mounted volume directory that doesn't
     # exist yet on first boot (e.g. a fresh Railway volume), create it
     # rather than fail with a cryptic sqlite3 "unable to open database" —
-    # the default (alongside app.py) always exists, so this only matters
-    # for a custom DATABASE_PATH.
-    os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    # only relevant for SQLite; Postgres (DATABASE_URL) ignores DB_PATH
+    # entirely.
+    if not db_compat.USING_POSTGRES:
+        os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
+    conn = db_compat.get_connection(DB_PATH)
     cur = conn.cursor()
     cur.execute("""
         CREATE TABLE IF NOT EXISTS recommendations (
@@ -190,7 +191,7 @@ def init_db():
 
 def log_recommendation(payload, top_result, user_id=None):
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = db_compat.get_connection(DB_PATH)
         cur = conn.cursor()
         cur.execute(
             """INSERT INTO recommendations
@@ -536,7 +537,7 @@ def admin_users():
     conn = auth.get_db()
     rows = conn.execute("SELECT id, name, email, location, role, created_at FROM users").fetchall()
     conn.close()
-    conn2 = sqlite3.connect(DB_PATH)
+    conn2 = db_compat.get_connection(DB_PATH)
     total_recs = conn2.execute("SELECT COUNT(*) FROM recommendations").fetchone()[0]
     conn2.close()
     return jsonify({

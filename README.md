@@ -152,8 +152,7 @@ number.
 1. Create a virtual environment and install dependencies:
    ```bash
    python -m venv venv
-   source venv/bin/activate            # on IOS
-   venv\Scripts\activate               # on Windows
+   source venv/bin/activate   # venv\Scripts\activate on Windows
    pip install -r requirements.txt
    ```
 

@@ -11,7 +11,10 @@ build, so there is no real revenue to report. The dashboard says so
 instead of inventing a figure.
 """
 
-from auth import get_db
+from datetime import datetime, timedelta
+
+import db_compat
+from auth import DB_PATH, get_db
 
 
 # ------------------------------------------------------------------ #
@@ -87,7 +90,10 @@ def get_admin_stats():
     total_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
 
     # "Active" = has at least one real record/log in the last 30 days —
-    # a real, defined query, not a guess.
+    # a real, defined query, not a guess. The cutoff is computed in
+    # Python (not SQL's datetime('now', ...), which is SQLite-only
+    # syntax Postgres doesn't understand) so this works on both.
+    cutoff = (datetime.utcnow() - timedelta(days=30)).isoformat()
     active_users = conn.execute("""
         SELECT COUNT(DISTINCT user_id) FROM (
             SELECT user_id, created_at FROM expenses
@@ -95,15 +101,13 @@ def get_admin_stats():
             UNION ALL SELECT user_id, created_at FROM soil_health_logs
             UNION ALL SELECT user_id, created_at FROM water_usage_logs
             UNION ALL SELECT user_id, created_at FROM yield_logs
-        ) WHERE created_at >= datetime('now', '-30 days')
-    """).fetchone()[0]
+        ) AS recent_activity WHERE created_at >= ?
+    """, (cutoff,)).fetchone()[0]
 
     disease_scans = conn.execute("SELECT COUNT(*) FROM disease_checks").fetchone()[0]
     conn.close()
 
-    import sqlite3
-    from auth import DB_PATH
-    conn2 = sqlite3.connect(DB_PATH)
+    conn2 = db_compat.get_connection(DB_PATH)
     total_recommendations = conn2.execute("SELECT COUNT(*) FROM recommendations").fetchone()[0]
     conn2.close()
 

@@ -17,13 +17,14 @@ as the dev-mode fallback.
 import os
 import secrets
 import smtplib
-import sqlite3
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from functools import wraps
 
 from flask import g, jsonify, redirect, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
+
+import db_compat
 
 DB_PATH = os.getenv("DATABASE_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "krushi.db"))
 RESET_TOKEN_TTL_MINUTES = 30
@@ -88,9 +89,7 @@ def send_welcome_email(user):
 
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return db_compat.get_connection(DB_PATH)
 
 
 def init_auth_tables():
@@ -130,17 +129,22 @@ def register_user(name, email, password, location=None, farm_size_acres=None,
         role = "farmer"
     conn = get_db()
     try:
-        cur = conn.execute(
-            """INSERT INTO users (name, email, password_hash, location, farm_size_acres,
+        insert_sql = """INSERT INTO users (name, email, password_hash, location, farm_size_acres,
                soil_type, preferred_language, role)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (name.strip(), email, generate_password_hash(password), location,
-             farm_size_acres, soil_type, preferred_language, role),
-        )
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)"""
+        params = (name.strip(), email, generate_password_hash(password), location,
+                  farm_size_acres, soil_type, preferred_language, role)
+        if db_compat.USING_POSTGRES:
+            # psycopg2 has no cursor.lastrowid equivalent to sqlite3's —
+            # ask Postgres to hand the new id straight back instead.
+            cur = conn.execute(insert_sql + " RETURNING id", params)
+            user_id = cur.fetchone()[0]
+        else:
+            cur = conn.execute(insert_sql, params)
+            user_id = cur.lastrowid
         conn.commit()
-        user_id = cur.lastrowid
         return {"success": True, "user_id": user_id}
-    except sqlite3.IntegrityError:
+    except db_compat.IntegrityError:
         return {"success": False, "error": "An account with this email already exists."}
     finally:
         conn.close()
@@ -228,7 +232,13 @@ def _find_valid_reset(conn, user_id, code):
         (user_id,),
     ).fetchall()
     for r in resets:
-        if check_password_hash(r["token_hash"], code) and datetime.fromisoformat(r["expires_at"]) >= datetime.utcnow():
+        # SQLite gives back the TIMESTAMP column as the ISO string it was
+        # stored as; Postgres parses it back into a native datetime object
+        # for the same column type — accept either rather than assuming.
+        expires_at = r["expires_at"]
+        if not isinstance(expires_at, datetime):
+            expires_at = datetime.fromisoformat(expires_at)
+        if check_password_hash(r["token_hash"], code) and expires_at >= datetime.utcnow():
             return r
     return None
 
