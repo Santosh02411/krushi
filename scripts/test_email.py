@@ -58,52 +58,72 @@ def main():
     to_email = sys.argv[1]
 
     print("Checking configuration...")
-    host = os.getenv("SMTP_HOST")
-    port = os.getenv("SMTP_PORT")
-    user = os.getenv("SMTP_USER")
-    password = os.getenv("SMTP_PASSWORD")
+    brevo_key = os.getenv("BREVO_API_KEY")
+    brevo_sender = os.getenv("BREVO_SENDER_EMAIL")
 
-    missing = [name for name, val in
-               [("SMTP_HOST", host), ("SMTP_PORT", port), ("SMTP_USER", user), ("SMTP_PASSWORD", password)]
-               if not val]
-    if missing:
-        print(f"\n❌ Not configured — missing from .env: {', '.join(missing)}")
-        print("   Add these to .env, save the file, then run this script again.")
-        print("   (For Gmail: SMTP_HOST=smtp.gmail.com, SMTP_PORT=587, SMTP_USER=your Gmail address,")
-        print("    SMTP_PASSWORD=a 16-character App Password from")
-        print("    https://myaccount.google.com/apppasswords — NOT your normal Gmail password.)")
-        sys.exit(1)
+    if brevo_key and brevo_sender:
+        print("   Using Brevo API (takes priority over SMTP when both are set)")
+        print(f"   BREVO_API_KEY={'*' * len(brevo_key)} ({len(brevo_key)} characters)")
+        print(f"   BREVO_SENDER_EMAIL={brevo_sender}")
+        print("   Note: this must be an email you've verified as a sender in your Brevo")
+        print("   account (Settings > Senders) — an unverified sender is the most common")
+        print("   real send failure with Brevo.")
+    else:
+        host = os.getenv("SMTP_HOST")
+        port = os.getenv("SMTP_PORT")
+        user = os.getenv("SMTP_USER")
+        password = os.getenv("SMTP_PASSWORD")
 
-    print(f"   SMTP_HOST={host}")
-    print(f"   SMTP_PORT={port}")
-    print(f"   SMTP_USER={user}")
-    print(f"   SMTP_PASSWORD={'*' * len(password)} ({len(password)} characters"
-          f"{', contains spaces' if ' ' in password else ''})")
-    if " " in password and len(password.replace(" ", "")) == 16:
-        print("   ⚠️  Your password has spaces and is 16 characters without them — this looks like a")
-        print("      Gmail App Password copied straight from Google's site with its display spacing")
-        print("      (\"xxxx xxxx xxxx xxxx\") kept in. This usually still works, but if the send below")
-        print("      fails with an auth error, try removing the spaces in .env and re-running this.")
+        missing = [name for name, val in
+                   [("SMTP_HOST", host), ("SMTP_PORT", port), ("SMTP_USER", user), ("SMTP_PASSWORD", password)]
+                   if not val]
+        if missing:
+            print(f"\n❌ Not configured — set either BREVO_API_KEY + BREVO_SENDER_EMAIL, or all of "
+                  f"SMTP_HOST/PORT/USER/PASSWORD, in .env.")
+            print("   Missing from SMTP option:", ", ".join(missing))
+            print("   (Brevo is recommended if you're deploying to Render or a similar host — see")
+            print("    .env.example for setup. Most cloud hosts block outbound SMTP on free tiers.)")
+            sys.exit(1)
+
+        print(f"   SMTP_HOST={host}")
+        print(f"   SMTP_PORT={port}")
+        print(f"   SMTP_USER={user}")
+        print(f"   SMTP_PASSWORD={'*' * len(password)} ({len(password)} characters"
+              f"{', contains spaces' if ' ' in password else ''})")
+        if " " in password and len(password.replace(" ", "")) == 16:
+            print("   ⚠️  Your password has spaces and is 16 characters without them — this looks like a")
+            print("      Gmail App Password copied straight from Google's site with its display spacing")
+            print("      (\"xxxx xxxx xxxx xxxx\") kept in. This usually still works, but if the send below")
+            print("      fails with an auth error, try removing the spaces in .env and re-running this.")
+
     print(f"\nSending a test email to {to_email}...")
 
     result = auth.send_email(
-        to_email, "Krushi SMTP test",
-        "If you're reading this, your Krushi SMTP configuration is working correctly. "
+        to_email, "Krushi email test",
+        "If you're reading this, your Krushi email configuration is working correctly. "
         "Real emails (welcome message, password reset codes) will now be delivered for real.",
     )
 
     if result["sent"]:
         print(f"\n✅ Sent successfully — check {to_email}'s inbox (and spam folder).")
         print("   If register/forgot-password in the web app still don't email you, restart the")
-        print("   Flask server (`python app.py`) — env vars are only read once at startup.")
+        print("   Flask server (or redeploy, if hosted) — env vars are only read once at startup.")
     else:
         print(f"\n❌ Send failed: {result.get('detail', 'unknown error')}")
-        print("   Common causes:")
-        print("   - Using your normal Gmail password instead of an App Password")
-        print("   - 2-Step Verification not turned on for the Gmail account (required before")
-        print("     App Passwords can be generated)")
-        print("   - Wrong port (587 for STARTTLS, which is what this app uses)")
-        print("   - Your network/firewall blocking outbound port 587")
+        if brevo_key and brevo_sender:
+            print("   Common causes with Brevo:")
+            print("   - BREVO_SENDER_EMAIL isn't verified as a sender in your Brevo account yet")
+            print("   - Wrong API key (make sure it's a plain API key, not an SMTP key or MCP")
+            print("     server token — those are different credentials)")
+            print("   - Over the free tier's 300 emails/day limit")
+        else:
+            print("   Common causes with SMTP:")
+            print("   - Using your normal Gmail password instead of an App Password")
+            print("   - 2-Step Verification not turned on for the Gmail account (required before")
+            print("     App Passwords can be generated)")
+            print("   - Wrong port (587 for STARTTLS, which is what this app uses)")
+            print("   - Your host blocking outbound port 587 (common on free tiers of Render and")
+            print("     similar platforms — switch to Brevo in that case, see .env.example)")
 
 
 if __name__ == "__main__":

@@ -5,13 +5,25 @@ Session-based authentication with real password hashing (werkzeug's
 scrypt-based hasher — no plaintext or reversible storage) and role-based
 access (farmer/admin).
 
-Email (welcome message, password reset codes) is sent for real via SMTP
-if SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD are set in .env — see
-.env.example for Gmail App Password setup, and scripts/test_email.py to
-verify your configuration independent of the web app. Without SMTP
-configured, there is no way to actually deliver an email, so the reset
-code is returned directly in the API response instead, clearly labeled
-as the dev-mode fallback.
+Email (welcome message, password reset codes) is sent for real, via
+either of two real providers, tried in this order:
+
+  1. Brevo's HTTP email API, if BREVO_API_KEY + BREVO_SENDER_EMAIL are
+     set in .env. This is the one that actually works on Render's free
+     tier — Render blocks all outbound SMTP ports (25/465/587) on free
+     web services as an anti-spam measure (confirmed via their own
+     changelog), which silently breaks option 2 below on that specific
+     host. Brevo's API runs over plain HTTPS (port 443), which isn't
+     blocked, and its free tier covers 300 emails/day.
+  2. Plain SMTP, if SMTP_HOST/PORT/USER/PASSWORD are set instead — still
+     the simpler option for local development or any host that doesn't
+     block outbound SMTP. See .env.example for Gmail App Password setup,
+     and scripts/test_email.py to verify either configuration
+     independent of the web app.
+
+Without either configured, there is no way to actually deliver an email,
+so the reset code is returned directly in the API response instead,
+clearly labeled as the dev-mode fallback.
 """
 
 import os
@@ -21,6 +33,7 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from functools import wraps
 
+import requests
 from flask import g, jsonify, redirect, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -28,39 +41,66 @@ import db_compat
 
 DB_PATH = os.getenv("DATABASE_PATH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "krushi.db"))
 RESET_TOKEN_TTL_MINUTES = 30
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 def email_config_status():
-    """Safe to expose publicly — reports WHETHER SMTP is configured and
-    which host, never the password. Lets the login page show a real,
-    live status instead of the user having to guess whether their .env
-    edits actually took effect (a common gotcha: env vars are only read
-    once, at server startup — editing .env while the server is running
-    does nothing until it's restarted)."""
+    """Safe to expose publicly — reports WHETHER email is configured and
+    which provider/host, never any secret. Lets the login page show a
+    real, live status instead of the user having to guess whether their
+    .env edits actually took effect (a common gotcha: env vars are only
+    read once, at server startup — editing .env while the server is
+    running does nothing until it's restarted)."""
+    brevo_key = os.getenv("BREVO_API_KEY")
+    brevo_sender = os.getenv("BREVO_SENDER_EMAIL")
+    if brevo_key and brevo_sender:
+        return {"configured": True, "provider": "Brevo API", "host": "api.brevo.com", "user": brevo_sender}
+
     host = os.getenv("SMTP_HOST")
     user = os.getenv("SMTP_USER")
     configured = bool(host and os.getenv("SMTP_PORT") and user and os.getenv("SMTP_PASSWORD"))
-    return {"configured": configured, "host": host if configured else None,
-            "user": user if configured else None}
+    return {"configured": configured, "provider": "SMTP" if configured else None,
+            "host": host if configured else None, "user": user if configured else None}
 
 
-def send_email(to_email, subject, body):
-    """Sends a real email via SMTP if credentials are configured in .env
-    (SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD). Returns a dict:
-      {"sent": True} on a real successful send
-      {"sent": False, "reason": "not_configured"} if SMTP_* isn't set
-      {"sent": False, "reason": "error", "detail": "..."} if SMTP is set
-        but the send itself failed (bad credentials, blocked port, etc.)
-    Callers use "reason" to decide what to tell the user — a real send
-    failure is a different, more actionable message than "not configured"."""
+def _send_via_brevo(to_email, subject, body):
+    api_key = os.getenv("BREVO_API_KEY")
+    sender_email = os.getenv("BREVO_SENDER_EMAIL")
+    sender_name = os.getenv("BREVO_SENDER_NAME") or "Krushi"
+    try:
+        resp = requests.post(
+            BREVO_API_URL,
+            headers={"accept": "application/json", "api-key": api_key, "content-type": "application/json"},
+            json={
+                "sender": {"name": sender_name, "email": sender_email},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "textContent": body,
+            },
+            timeout=15,
+        )
+        if resp.status_code in (200, 201):
+            return {"sent": True}
+        # Brevo returns a JSON body describing exactly what went wrong
+        # (unverified sender, bad key, over the daily quota, etc.) —
+        # surface that real detail rather than just the status code.
+        try:
+            detail = resp.json().get("message", resp.text)
+        except ValueError:
+            detail = resp.text
+        print(f"[auth] Brevo send failed ({resp.status_code}): {detail}")
+        return {"sent": False, "reason": "error", "detail": detail}
+    except requests.exceptions.RequestException as e:
+        print(f"[auth] Brevo request failed: {e}")
+        return {"sent": False, "reason": "error", "detail": str(e)}
+
+
+def _send_via_smtp(to_email, subject, body):
     host = os.getenv("SMTP_HOST")
     port = os.getenv("SMTP_PORT")
     user = os.getenv("SMTP_USER")
     password = os.getenv("SMTP_PASSWORD")
     from_addr = os.getenv("SMTP_FROM") or user
-
-    if not all([host, port, user, password]):
-        return {"sent": False, "reason": "not_configured"}
 
     try:
         msg = MIMEText(body)
@@ -76,6 +116,25 @@ def send_email(to_email, subject, body):
     except Exception as e:
         print(f"[auth] SMTP send failed: {e}")
         return {"sent": False, "reason": "error", "detail": str(e)}
+
+
+def send_email(to_email, subject, body):
+    """Sends a real email via Brevo's API (preferred — works on hosts
+    that block outbound SMTP, like Render's free tier) or SMTP (fallback
+    for local dev / hosts that don't block it), whichever is configured.
+    Returns a dict:
+      {"sent": True} on a real successful send
+      {"sent": False, "reason": "not_configured"} if neither is set
+      {"sent": False, "reason": "error", "detail": "..."} if a provider
+        is configured but the send itself failed (bad credentials,
+        unverified sender, blocked port, over quota, etc.)
+    Callers use "reason" to decide what to tell the user — a real send
+    failure is a different, more actionable message than "not configured"."""
+    if os.getenv("BREVO_API_KEY") and os.getenv("BREVO_SENDER_EMAIL"):
+        return _send_via_brevo(to_email, subject, body)
+    if all([os.getenv("SMTP_HOST"), os.getenv("SMTP_PORT"), os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD")]):
+        return _send_via_smtp(to_email, subject, body)
+    return {"sent": False, "reason": "not_configured"}
 
 
 def send_welcome_email(user):
